@@ -16,6 +16,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseBlueprintsMarkdown } from './parse-blueprints.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -78,6 +79,7 @@ async function syncBenchmark(entry, githubBase, rawBase) {
   const files = await walk(srcDir);
   const saves = [];
   let assetCount = 0;
+  let factorioVersion;
 
   for (const absFile of files) {
     const rel = path.relative(srcDir, absFile);
@@ -97,6 +99,8 @@ async function syncBenchmark(entry, githubBase, rawBase) {
 
     if (rel.toLowerCase() === 'readme.md') {
       const raw = await fs.readFile(absFile, 'utf8');
+      const versionMatch = raw.match(/\*\*Factorio Version:\*\*\s*([\d.]+)/i);
+      if (versionMatch) factorioVersion = versionMatch[1];
       const rewritten = rewriteMarkdownAssetPaths(raw, entry.slug);
       await fs.writeFile(path.join(outMdDir, 'README.md'), rewritten);
       continue;
@@ -111,6 +115,7 @@ async function syncBenchmark(entry, githubBase, rawBase) {
 
   return {
     ...entry,
+    factorioVersion,
     githubUrl: `${githubBase}/tree/${'master'}/${entry.source}`,
     readmeGithubUrl: `${githubBase}/blob/master/${entry.source}/README.md`,
     saves,
@@ -175,6 +180,12 @@ async function syncBlueprints(blueprintsSource, rawBase) {
   );
 
   await fs.mkdir(GENERATED_DIR, { recursive: true });
+
+  const categories = parseBlueprintsMarkdown(rewritten);
+  await fs.writeFile(
+    path.join(GENERATED_DIR, 'blueprints.json'),
+    JSON.stringify({ categories }, null, 2),
+  );
   await fs.writeFile(path.join(GENERATED_DIR, 'blueprints.md'), rewritten);
 }
 

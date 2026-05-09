@@ -23,6 +23,7 @@ export interface BenchmarkEntry {
   summary?: string;
   tags?: string[];
   featured?: boolean;
+  factorioVersion?: string;
   githubUrl: string;
   readmeGithubUrl: string;
   saves: BenchmarkSave[];
@@ -32,4 +33,25 @@ export interface BenchmarkEntry {
 export interface ContentIndex {
   sourceRepo: SourceRepo;
   benchmarks: BenchmarkEntry[];
+}
+
+export interface BlueprintEntry {
+  description: string;
+  version?: string;
+  author?: string;
+  factoriobinUrl?: string;
+  youtubeUrl?: string;
+  deprecated: boolean;
+}
+
+export interface BlueprintCategory {
+  id: string;
+  parent: string;
+  name: string;
+  iconUrl?: string;
+  entries: BlueprintEntry[];
+}
+
+export interface BlueprintIndex {
+  categories: BlueprintCategory[];
 }

@@ -1,7 +1,13 @@
 import { Box, Button, Stack, Typography } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
+import index from '../generated/index.json';
+import type { ContentIndex } from '../content';
+import { BenchmarkCard } from '../components/BenchmarkCard';
+
+const content = index as ContentIndex;
 
 export function Home() {
+  const featured = content.benchmarks.filter((b) => b.featured);
   return (
     <Stack spacing={6}>
       <Box
@@ -32,14 +38,24 @@ export function Home() {
         </Stack>
       </Box>
 
-      <Box>
-        <Typography variant="h4" sx={{ mb: 2 }}>
-          Featured
-        </Typography>
-        <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-          Featured benchmark cards will appear here once content sync is wired up (Phase 2).
-        </Typography>
-      </Box>
+      {featured.length > 0 && (
+        <Box>
+          <Typography variant="h4" sx={{ mb: 3 }}>
+            Featured
+          </Typography>
+          <Box
+            sx={{
+              display: 'grid',
+              gap: 3,
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+            }}
+          >
+            {featured.map((b) => (
+              <BenchmarkCard key={b.slug} benchmark={b} />
+            ))}
+          </Box>
+        </Box>
+      )}
     </Stack>
   );
 }

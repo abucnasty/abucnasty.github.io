@@ -13,8 +13,8 @@ export const darkTheme = createTheme({
       light: '#81d99a',
     },
     background: {
-      default: '#404040',
-      paper: '#232323',
+      default: '#000000',
+      paper: '#121212',
     },
     common: {
       black: '#121212',
