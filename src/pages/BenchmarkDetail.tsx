@@ -41,11 +41,13 @@ export function BenchmarkDetail() {
   const [markdown, setMarkdown] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const hasCharts = Boolean(benchmark?.timeseries);
-  const [tab, setTab] = useState<'readme' | 'charts'>('readme');
+  const hasSaves = (benchmark?.saves.length ?? 0) > 0;
+  const hasTabs = hasCharts || hasSaves;
+  const [tab, setTab] = useState<'readme' | 'charts' | 'saves'>('readme');
 
   useEffect(() => {
     setTab('readme');
-  }, [hasCharts, slug]);
+  }, [hasTabs, slug]);
 
   useEffect(() => {
     setMarkdown(null);
@@ -73,7 +75,7 @@ export function BenchmarkDetail() {
     );
   }
 
-  const showToc = markdown && (tab === 'readme' || !hasCharts);
+  const showToc = markdown && (tab === 'readme' || !hasTabs);
 
   return (
     <Box
@@ -86,7 +88,7 @@ export function BenchmarkDetail() {
     >
       <Box sx={{ minWidth: 0 }}>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        <Box sx={{ mb: hasCharts ? 2 : 3 }}>
+        <Box sx={{ mb: hasTabs ? 2 : 3 }}>
           <Typography
             variant="overline"
             sx={{ color: 'primary.main', letterSpacing: 2, display: 'block' }}
@@ -97,7 +99,7 @@ export function BenchmarkDetail() {
             {benchmark.title}
           </Typography>
         </Box>
-        {hasCharts ? (
+        {hasTabs ? (
           <>
             <Tabs
               value={tab}
@@ -111,11 +113,35 @@ export function BenchmarkDetail() {
               }}
             >
               <Tab value="readme" label="README" />
-              <Tab value="charts" label="Interactive metrics" />
+              {hasCharts && <Tab value="charts" label="Interactive metrics" />}
+              {hasSaves && <Tab value="saves" label="Save files" />}
             </Tabs>
-            <Box hidden={tab !== 'charts'}>
-              {tab === 'charts' && <BenchmarkCharts slug={benchmark.slug} />}
-            </Box>
+            {hasCharts && (
+              <Box hidden={tab !== 'charts'}>
+                {tab === 'charts' && <BenchmarkCharts slug={benchmark.slug} />}
+              </Box>
+            )}
+            {hasSaves && (
+              <Box hidden={tab !== 'saves'}>
+                {tab === 'saves' && (
+                  <Stack spacing={0.5}>
+                    {benchmark.saves.map((s) => (
+                      <Link
+                        key={s.path}
+                        href={s.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download
+                        sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: 14, wordBreak: 'break-all' }}
+                      >
+                        <DownloadIcon fontSize="small" />
+                        {s.name}
+                      </Link>
+                    ))}
+                  </Stack>
+                )}
+              </Box>
+            )}
             <Box hidden={tab !== 'readme'}>
               {tab === 'readme' && (
                 <>
@@ -175,30 +201,6 @@ export function BenchmarkDetail() {
           <>
             <Divider sx={{ my: 2 }} />
             <TableOfContents markdown={markdown} />
-          </>
-        )}
-
-        {benchmark.saves.length > 0 && (
-          <>
-            <Divider sx={{ my: 2 }} />
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>
-              Save files ({benchmark.saves.length})
-            </Typography>
-            <Stack spacing={0.5}>
-              {benchmark.saves.map((s) => (
-                <Link
-                  key={s.path}
-                  href={s.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  download
-                  sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: 14, wordBreak: 'break-all' }}
-                >
-                  <DownloadIcon fontSize="small" />
-                  {s.name}
-                </Link>
-              ))}
-            </Stack>
           </>
         )}
       </Box>
