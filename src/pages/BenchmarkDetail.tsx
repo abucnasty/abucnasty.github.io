@@ -19,6 +19,7 @@ import index from '../generated/index.json';
 import type { ContentIndex } from '../content';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { BenchmarkCharts } from '../components/BenchmarkCharts';
+import { TableOfContents } from '../components/TableOfContents';
 
 const content = index as ContentIndex;
 
@@ -64,13 +65,15 @@ export function BenchmarkDetail() {
     return (
       <Stack spacing={2}>
         <Typography variant="h3">Not found</Typography>
-        <Typography>No benchmark with slug “{slug}”.</Typography>
+        <Typography>No benchmark with slug "{slug}".</Typography>
         <Button component={RouterLink} to="/benchmarks" variant="contained">
           Back to benchmarks
         </Button>
       </Stack>
     );
   }
+
+  const showToc = markdown && (tab === 'readme' || !hasCharts);
 
   return (
     <Box
@@ -136,6 +139,9 @@ export function BenchmarkDetail() {
           top: { md: 88 },
           backgroundColor: 'background.paper',
           p: 3,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 0,
         }}
       >
         <Typography variant="overline" sx={{ color: 'primary.main' }}>
@@ -164,6 +170,13 @@ export function BenchmarkDetail() {
         >
           View on GitHub
         </Button>
+
+        {showToc && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <TableOfContents markdown={markdown} />
+          </>
+        )}
 
         {benchmark.saves.length > 0 && (
           <>
