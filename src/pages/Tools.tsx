@@ -1,5 +1,6 @@
 import { Box, Button, Divider, Link, Stack, Typography } from '@mui/material';
 import GitHubIcon from '@mui/icons-material/GitHub';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import YouTubeIcon from '@mui/icons-material/YouTube';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 
@@ -18,6 +19,16 @@ const tools = [
   },
 ];
 
+const utilities = [
+  {
+    name: 'Clock Generator',
+    description: 'A web app for designing and generating Factorio clock blueprint strings for stack inserters',
+    url: 'https://github.com/abucnasty/factorio-scripts',
+    author: 'abucnasty',
+    liveUrl: 'https://clock-generator-self.vercel.app/',
+  },
+];
+
 const tutorialResources = [
   {
     icon: <MenuBookIcon fontSize="small" />,
@@ -28,6 +39,23 @@ const tutorialResources = [
     icon: <YouTubeIcon fontSize="small" />,
     label: 'How to Benchmark — video walkthrough',
     url: 'https://youtu.be/pXz01Be-9hE',
+  },
+];
+
+const mods = [
+  {
+    name: 'Clock Generator Sidecar',
+    description: 'Select machines to extract crafting speeds and productivity bonuses. Export data for use with the Clock Generator tool.',
+    url: 'https://mods.factorio.com/mod/clock-generator-sidecar',
+    sourceUrl: 'https://github.com/abucnasty/factorio-scripts',
+    downloads: 324,
+  },
+  {
+    name: 'Particle Free Disposal',
+    description: 'UPS mod that removes all particles related to destroying chests with a railgun.',
+    url: 'https://mods.factorio.com/mod/particle_free_disposal',
+    sourceUrl: 'https://github.com/abucnasty/particle-free-disposal',
+    downloads: 265,
   },
 ];
 
@@ -79,18 +107,161 @@ export function Tools() {
                     {tool.description}
                   </Typography>
                 </Box>
-                <Button
-                  component="a"
-                  href={tool.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="outlined"
-                  size="small"
-                  startIcon={<GitHubIcon />}
-                  sx={{ flexShrink: 0 }}
-                >
-                  View on GitHub
-                </Button>
+                <Stack direction="row" spacing={1} flexShrink={0} flexWrap="wrap">
+                  <Button
+                    component="a"
+                    href={tool.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="outlined"
+                    size="small"
+                    startIcon={<GitHubIcon />}
+                  >
+                    View on GitHub
+                  </Button>
+                </Stack>
+              </Stack>
+            </Box>
+          ))}
+        </Stack>
+      </Box>
+
+      <Divider />
+
+      <Box>
+        <Typography
+          variant="overline"
+          sx={{
+            color: 'primary.main',
+            letterSpacing: 2,
+            display: 'block',
+            borderBottom: '1px solid',
+            borderColor: 'primary.main',
+            pb: 0.5,
+            mb: 2,
+          }}
+        >
+          Utilities
+        </Typography>
+        <Stack spacing={3}>
+          {utilities.map((tool) => (
+            <Box
+              key={tool.name}
+              sx={{
+                backgroundColor: 'background.paper',
+                border: 1,
+                borderColor: 'divider',
+                p: 3,
+              }}
+            >
+              <Stack direction="row" spacing={2} alignItems="flex-start" justifyContent="space-between" flexWrap="wrap" gap={2}>
+                <Box>
+                  <Typography variant="h6" sx={{ lineHeight: 1.2 }}>
+                    {tool.name}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    by {tool.author}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
+                    {tool.description}
+                  </Typography>
+                </Box>
+                <Stack direction="row" spacing={1} flexShrink={0} flexWrap="wrap">
+                  {tool.liveUrl && (
+                    <Button
+                      component="a"
+                      href={tool.liveUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      variant="contained"
+                      size="small"
+                      startIcon={<OpenInNewIcon />}
+                    >
+                      Open app
+                    </Button>
+                  )}
+                  <Button
+                    component="a"
+                    href={tool.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="outlined"
+                    size="small"
+                    startIcon={<GitHubIcon />}
+                  >
+                    View on GitHub
+                  </Button>
+                </Stack>
+              </Stack>
+            </Box>
+          ))}
+        </Stack>
+      </Box>
+
+      <Divider />
+
+      <Box>
+        <Typography
+          variant="overline"
+          sx={{
+            color: 'primary.main',
+            letterSpacing: 2,
+            display: 'block',
+            borderBottom: '1px solid',
+            borderColor: 'primary.main',
+            pb: 0.5,
+            mb: 2,
+          }}
+        >
+          Mods
+        </Typography>
+        <Stack spacing={3}>
+          {mods.map((mod) => (
+            <Box
+              key={mod.name}
+              sx={{
+                backgroundColor: 'background.paper',
+                border: 1,
+                borderColor: 'divider',
+                p: 3,
+              }}
+            >
+              <Stack direction="row" spacing={2} alignItems="flex-start" justifyContent="space-between" flexWrap="wrap" gap={2}>
+                <Box>
+                  <Typography variant="h6" sx={{ lineHeight: 1.2 }}>
+                    {mod.name}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    {mod.downloads} downloads
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
+                    {mod.description}
+                  </Typography>
+                </Box>
+                <Stack direction="row" spacing={1} flexShrink={0} flexWrap="wrap">
+                  <Button
+                    component="a"
+                    href={mod.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="contained"
+                    size="small"
+                    startIcon={<OpenInNewIcon />}
+                  >
+                    Mod portal
+                  </Button>
+                  <Button
+                    component="a"
+                    href={mod.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="outlined"
+                    size="small"
+                    startIcon={<GitHubIcon />}
+                  >
+                    Source
+                  </Button>
+                </Stack>
               </Stack>
             </Box>
           ))}
