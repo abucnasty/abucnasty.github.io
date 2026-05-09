@@ -29,6 +29,8 @@ export interface BenchmarkEntry {
   readmeGithubUrl: string;
   saves: BenchmarkSave[];
   assetCount: number;
+  /** True when scripts/sync-content.mjs emitted a timeseries.json next to the README. */
+  timeseries?: boolean;
 }
 
 export interface ContentIndex {

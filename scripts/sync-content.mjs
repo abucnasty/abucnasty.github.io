@@ -17,6 +17,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseBlueprintsMarkdown } from './parse-blueprints.mjs';
+import { aggregateScenarioCsv } from './lib/aggregate.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,7 +31,10 @@ const SOURCE_REPO_PATH =
   process.env.FACTORIO_BENCHMARKS_PATH ??
   path.resolve(ROOT, '..', 'factorio', 'factorio-benchmarks');
 
-/** @typedef {{ slug: string, source: string, title: string, date?: string, summary?: string, tags?: string[], featured?: boolean }} BenchmarkEntry */
+/** @typedef {{ name: string, csv: string }} ChartScenario */
+/** @typedef {{ name: string, scenarios: ChartScenario[], metrics?: string[] }} ChartGroup */
+/** @typedef {{ scenarios?: ChartScenario[], groups?: ChartGroup[], metrics?: string[], removeFirstTicks?: number, maxTicks?: number, window?: number }} ChartConfig */
+/** @typedef {{ slug: string, source: string, title: string, date?: string, summary?: string, tags?: string[], featured?: boolean, chart?: ChartConfig }} BenchmarkEntry */
 /** @typedef {{ sourceRepo: { owner: string, repo: string, branch: string }, blueprintsSource: string, benchmarks: BenchmarkEntry[] }} Manifest */
 
 async function main() {
@@ -116,6 +120,11 @@ async function syncBenchmark(entry, githubBase, rawBase) {
     assetCount++;
   }
 
+  // Optional: aggregate verbose CSVs for interactive charts.
+  const timeseries = entry.chart
+    ? await aggregateBenchmarkChart(entry, srcDir, outMdDir)
+    : false;
+
   return {
     ...entry,
     factorioVersion,
@@ -124,7 +133,81 @@ async function syncBenchmark(entry, githubBase, rawBase) {
     readmeGithubUrl: `${githubBase}/blob/master/${entry.source}/README.md`,
     saves,
     assetCount,
+    timeseries,
   };
+}
+
+/**
+ * Aggregate every scenario CSV declared in the manifest into a single
+ * `timeseries.json` written next to the rewritten README. Returns true if a
+ * file was emitted.
+ *
+ * @param {BenchmarkEntry} entry
+ * @param {string} srcDir
+ * @param {string} outMdDir
+ */
+async function aggregateBenchmarkChart(entry, srcDir, outMdDir) {
+  const cfg = entry.chart;
+  if (!cfg) return false;
+
+  const removeFirstTicks = cfg.removeFirstTicks ?? 30;
+  const maxTicks = cfg.maxTicks ?? 18000;
+  const window = cfg.window ?? 60;
+
+  /**
+   * Aggregate one flat list of scenarios into { metrics (union), scenarios[] }.
+   * @param {ChartScenario[]} scenarioList
+   * @param {string[]} [metricsOverride]
+   */
+  async function aggregateScenarios(scenarioList, metricsOverride) {
+    const scenarios = [];
+    const metricUnion = new Set();
+    for (const sc of scenarioList) {
+      const csvPath = path.join(srcDir, sc.csv);
+      await assertFile(csvPath, `chart csv missing: ${entry.slug} → ${sc.csv}`);
+      const agg = await aggregateScenarioCsv(csvPath, {
+        metrics: metricsOverride ?? cfg.metrics,
+        removeFirstTicks,
+        maxTicks,
+        window,
+      });
+      const trimmed = {};
+      for (const [m, points] of Object.entries(agg.metrics)) {
+        if (points.some((p) => p.y !== 0)) {
+          trimmed[m] = points;
+          metricUnion.add(m);
+        }
+      }
+      scenarios.push({ name: sc.name, metrics: trimmed });
+    }
+    return { metrics: [...metricUnion], scenarios };
+  }
+
+  let payload;
+
+  if (cfg.groups?.length) {
+    // Multi-group mode: each group gets its own scenarios array.
+    const groups = [];
+    for (const grp of cfg.groups) {
+      if (!grp.scenarios?.length) continue;
+      const result = await aggregateScenarios(grp.scenarios, grp.metrics);
+      groups.push({ name: grp.name, ...result });
+    }
+    if (!groups.length) return false;
+    payload = { window, unit: 'µs', groups };
+  } else if (cfg.scenarios?.length) {
+    // Flat mode (original behaviour).
+    const result = await aggregateScenarios(cfg.scenarios);
+    payload = { window, unit: 'µs', ...result };
+  } else {
+    return false;
+  }
+
+  await fs.writeFile(
+    path.join(outMdDir, 'timeseries.json'),
+    JSON.stringify(payload),
+  );
+  return true;
 }
 
 /**

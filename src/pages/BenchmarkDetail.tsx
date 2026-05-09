@@ -1,11 +1,24 @@
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
-import { Alert, Box, Button, Chip, CircularProgress, Divider, Link, Stack, Typography } from '@mui/material';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Divider,
+  Link,
+  Stack,
+  Tab,
+  Tabs,
+  Typography,
+} from '@mui/material';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import DownloadIcon from '@mui/icons-material/Download';
 import index from '../generated/index.json';
 import type { ContentIndex } from '../content';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
+import { BenchmarkCharts } from '../components/BenchmarkCharts';
 
 const content = index as ContentIndex;
 
@@ -26,6 +39,12 @@ export function BenchmarkDetail() {
   const benchmark = content.benchmarks.find((b) => b.slug === slug);
   const [markdown, setMarkdown] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const hasCharts = Boolean(benchmark?.timeseries);
+  const [tab, setTab] = useState<'readme' | 'charts'>('readme');
+
+  useEffect(() => {
+    setTab('readme');
+  }, [hasCharts, slug]);
 
   useEffect(() => {
     setMarkdown(null);
@@ -37,7 +56,7 @@ export function BenchmarkDetail() {
       return;
     }
     loader()
-      .then(setMarkdown)
+      .then((md) => setMarkdown(md.replace(/^\s*#\s+.*\r?\n+/, '')))
       .catch((e) => setError(String(e)));
   }, [benchmark]);
 
@@ -64,8 +83,51 @@ export function BenchmarkDetail() {
     >
       <Box sx={{ minWidth: 0 }}>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        {!markdown && !error && <CircularProgress />}
-        {markdown && <MarkdownRenderer source={markdown} />}
+        <Box sx={{ mb: hasCharts ? 2 : 3 }}>
+          <Typography
+            variant="overline"
+            sx={{ color: 'primary.main', letterSpacing: 2, display: 'block' }}
+          >
+            {benchmark.date ?? 'Benchmark'}
+          </Typography>
+          <Typography variant="h3" sx={{ mt: 0.5, lineHeight: 1.15 }}>
+            {benchmark.title}
+          </Typography>
+        </Box>
+        {hasCharts ? (
+          <>
+            <Tabs
+              value={tab}
+              onChange={(_, v) => setTab(v)}
+              sx={{
+                mb: 3,
+                borderBottom: 1,
+                borderColor: 'divider',
+                minHeight: 40,
+                '& .MuiTab-root': { minHeight: 40, textTransform: 'none' },
+              }}
+            >
+              <Tab value="readme" label="README" />
+              <Tab value="charts" label="Interactive metrics" />
+            </Tabs>
+            <Box hidden={tab !== 'charts'}>
+              {tab === 'charts' && <BenchmarkCharts slug={benchmark.slug} />}
+            </Box>
+            <Box hidden={tab !== 'readme'}>
+              {tab === 'readme' && (
+                <>
+                  {!markdown && !error && <CircularProgress />}
+                  {markdown && <MarkdownRenderer source={markdown} />}
+                </>
+              )}
+            </Box>
+          </>
+        ) : (
+          <>
+            {!markdown && !error && <CircularProgress />}
+            {markdown && <MarkdownRenderer source={markdown} />}
+          </>
+        )}
       </Box>
 
       <Box
