@@ -1,8 +1,8 @@
-import { Fragment, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Box, Button, Chip, Stack, Switch, Typography } from '@mui/material';
 import blueprints from '../generated/blueprints.json';
 import type { BlueprintIndex } from '../content';
-import { BlueprintCard } from '../components/BlueprintCard';
+import { BlueprintRow } from '../components/BlueprintRow';
 
 const data = blueprints as BlueprintIndex;
 
@@ -29,7 +29,7 @@ export function Blueprints() {
   );
 
   return (
-    <Stack spacing={4}>
+    <Stack spacing={3}>
       <Box>
         <Typography variant="h3">Blueprints</Typography>
         <Typography variant="body1" sx={{ color: 'text.secondary', mt: 1 }}>
@@ -50,38 +50,62 @@ export function Blueprints() {
 
       {grouped.map(([parent, cats]) => (
         <Box key={parent}>
-          <Typography variant="h4" sx={{ borderBottom: '2px solid', borderColor: 'primary.main', pb: 1, mb: 3 }}>
+          <Typography
+            variant="overline"
+            sx={{
+              display: 'block',
+              color: 'primary.main',
+              borderBottom: '1px solid',
+              borderColor: 'primary.main',
+              pb: 0.5,
+              mb: 1.5,
+              letterSpacing: 1,
+              fontSize: 12,
+            }}
+          >
             {parent}
           </Typography>
-          <Stack spacing={4}>
+          <Stack spacing={2}>
             {cats.map((cat) => {
-              const entries = showDeprecated ? cat.entries : cat.entries.filter((e) => !e.deprecated);
+              const entries = showDeprecated
+                ? cat.entries
+                : cat.entries.filter((e) => !e.deprecated);
               if (entries.length === 0) return null;
               return (
                 <Box key={cat.id}>
-                  <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    alignItems="center"
+                    sx={{ mb: 0.5, px: 1 }}
+                  >
                     {cat.iconUrl && (
                       <Box
                         component="img"
                         src={cat.iconUrl}
                         alt=""
-                        sx={{ width: 32, height: 32, objectFit: 'contain' }}
+                        sx={{ width: 20, height: 20, objectFit: 'contain' }}
                       />
                     )}
-                    <Typography variant="h5">{cat.name}</Typography>
-                    <Chip label={`${entries.length}`} size="small" variant="outlined" />
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                      {cat.name}
+                    </Typography>
+                    <Chip
+                      label={entries.length}
+                      size="small"
+                      variant="outlined"
+                      sx={{ height: 18, fontSize: 11 }}
+                    />
                   </Stack>
                   <Box
                     sx={{
-                      display: 'grid',
-                      gap: 3,
-                      gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+                      borderTop: 1,
+                      borderColor: 'divider',
+                      backgroundColor: 'background.paper',
                     }}
                   >
                     {entries.map((entry, i) => (
-                      <Fragment key={`${cat.id}-${i}`}>
-                        <BlueprintCard entry={entry} />
-                      </Fragment>
+                      <BlueprintRow key={`${cat.id}-${i}`} entry={entry} />
                     ))}
                   </Box>
                 </Box>

@@ -8,7 +8,7 @@ interface BlueprintCardProps {
 }
 
 export function BlueprintCard({ entry }: BlueprintCardProps) {
-  const youtubeThumb = entry.youtubeUrl ? extractYoutubeThumb(entry.youtubeUrl) : undefined;
+  const previewUrl = entry.factoriobinPreviewUrl;
   return (
     <Card
       sx={{
@@ -19,32 +19,30 @@ export function BlueprintCard({ entry }: BlueprintCardProps) {
         opacity: entry.deprecated ? 0.6 : 1,
       }}
     >
-      {youtubeThumb && (
+      {previewUrl && (
         <Link
-          href={entry.youtubeUrl}
+          href={entry.factoriobinUrl}
           target="_blank"
           rel="noopener noreferrer"
-          sx={{ display: 'block', position: 'relative', overflow: 'hidden', backgroundColor: 'common.black' }}
+          sx={{
+            display: 'block',
+            overflow: 'hidden',
+            backgroundColor: 'common.black',
+          }}
         >
           <Box
             component="img"
-            src={youtubeThumb}
+            src={previewUrl}
             alt=""
             loading="lazy"
-            sx={{ width: '100%', display: 'block', aspectRatio: '16 / 9', objectFit: 'cover' }}
-          />
-          <Box
+            referrerPolicy="no-referrer"
             sx={{
-              position: 'absolute',
-              inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: 0.85,
+              width: '100%',
+              display: 'block',
+              aspectRatio: '16 / 9',
+              objectFit: 'contain',
             }}
-          >
-            <YouTubeIcon sx={{ color: 'error.main', fontSize: 64 }} />
-          </Box>
+          />
         </Link>
       )}
       <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -89,13 +87,4 @@ export function BlueprintCard({ entry }: BlueprintCardProps) {
       </CardContent>
     </Card>
   );
-}
-
-function extractYoutubeThumb(url: string): string | undefined {
-  const idMatch =
-    /youtu\.be\/([\w-]{11})/.exec(url) ||
-    /[?&]v=([\w-]{11})/.exec(url) ||
-    /youtube\.com\/embed\/([\w-]{11})/.exec(url);
-  if (!idMatch) return undefined;
-  return `https://img.youtube.com/vi/${idMatch[1]}/mqdefault.jpg`;
 }

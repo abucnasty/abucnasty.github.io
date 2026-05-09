@@ -182,11 +182,70 @@ async function syncBlueprints(blueprintsSource, rawBase) {
   await fs.mkdir(GENERATED_DIR, { recursive: true });
 
   const categories = parseBlueprintsMarkdown(rewritten);
+  await enrichFactoriobinPreviews(categories);
   await fs.writeFile(
     path.join(GENERATED_DIR, 'blueprints.json'),
     JSON.stringify({ categories }, null, 2),
   );
   await fs.writeFile(path.join(GENERATED_DIR, 'blueprints.md'), rewritten);
+}
+
+const FACTORIOBIN_CACHE = path.join(ROOT, '.cache', 'factoriobin-previews.json');
+
+/**
+ * Fetch each factoriobin post page once and extract its preview image URL.
+ * Results are cached on disk so repeated syncs don't re-hit the site.
+ *
+ * @param {Array<{ entries: Array<{ factoriobinUrl?: string, factoriobinPreviewUrl?: string }> }>} categories
+ */
+async function enrichFactoriobinPreviews(categories) {
+  let cache = {};
+  try {
+    cache = JSON.parse(await fs.readFile(FACTORIOBIN_CACHE, 'utf8'));
+  } catch {
+    /* no cache yet */
+  }
+
+  let fetched = 0;
+  let cached = 0;
+  for (const cat of categories) {
+    for (const entry of cat.entries) {
+      if (!entry.factoriobinUrl) continue;
+      const id = extractFactoriobinId(entry.factoriobinUrl);
+      if (!id) continue;
+      if (cache[id] !== undefined) {
+        if (cache[id]) entry.factoriobinPreviewUrl = cache[id];
+        cached++;
+        continue;
+      }
+      const preview = await fetchFactoriobinPreview(entry.factoriobinUrl);
+      cache[id] = preview ?? null;
+      if (preview) entry.factoriobinPreviewUrl = preview;
+      fetched++;
+    }
+  }
+
+  await fs.mkdir(path.dirname(FACTORIOBIN_CACHE), { recursive: true });
+  await fs.writeFile(FACTORIOBIN_CACHE, JSON.stringify(cache, null, 2));
+  log(`✓ factoriobin previews (${fetched} fetched, ${cached} cached)`);
+}
+
+function extractFactoriobinId(url) {
+  const m = /factoriobin\.com\/post\/([\w-]+)/i.exec(url);
+  return m ? m[1] : undefined;
+}
+
+async function fetchFactoriobinPreview(url) {
+  try {
+    const res = await fetch(url, { headers: { 'user-agent': 'abucnasty.github.io sync' } });
+    if (!res.ok) return undefined;
+    const html = await res.text();
+    // Preview image lives at https://cdn.factoriobin.com/perma/bp/<a>/<b>/<id>-<hash>/fbin-<id>-0.jpg
+    const m = /https:\/\/cdn\.factoriobin\.com\/perma\/bp\/[^"'\s)]+\.jpg/i.exec(html);
+    return m ? m[0] : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** @param {string} dir */

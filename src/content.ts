@@ -40,6 +40,7 @@ export interface BlueprintEntry {
   version?: string;
   author?: string;
   factoriobinUrl?: string;
+  factoriobinPreviewUrl?: string;
   youtubeUrl?: string;
   deprecated: boolean;
 }

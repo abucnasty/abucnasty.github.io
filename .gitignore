@@ -23,6 +23,7 @@ pnpm-debug.log*
 # Generated content (sync output)
 src/generated
 public/benchmarks
+.cache
 
 PROJECT.md
 PLAN.md
