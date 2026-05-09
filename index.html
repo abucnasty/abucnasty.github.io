@@ -60,6 +60,16 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Restore the deep-link URL that 404.html stashed in sessionStorage.
+      (function () {
+        var redirect = sessionStorage.redirect;
+        delete sessionStorage.redirect;
+        if (redirect && redirect !== location.href) {
+          history.replaceState(null, '', redirect);
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
