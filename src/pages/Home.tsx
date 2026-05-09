@@ -4,6 +4,7 @@ import index from '../generated/index.json';
 import type { ContentIndex } from '../content';
 import { BenchmarkCard } from '../components/BenchmarkCard';
 import { SocialLinks } from '../components/SocialLinks';
+import { LatestVideo } from '../components/LatestVideo';
 
 const content = index as ContentIndex;
 const AVATAR_URL = 'https://avatars.githubusercontent.com/u/213731755?v=4';
@@ -106,6 +107,8 @@ export function Home() {
           </Box>
         </Box>
       )}
+
+      <LatestVideo />
     </Stack>
   );
 }
