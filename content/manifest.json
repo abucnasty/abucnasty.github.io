@@ -1,0 +1,29 @@
+{
+  "$schema": "./manifest.schema.json",
+  "sourceRepo": {
+    "owner": "abucnasty",
+    "repo": "factorio-benchmarks",
+    "branch": "master"
+  },
+  "blueprintsSource": "docs/blueprints/README.md",
+  "benchmarks": [
+    {
+      "slug": "44k-inserter-clocks",
+      "source": "benchmarks/2025-07-14-44k-inserter-clocks",
+      "title": "44k Inserter Clocks",
+      "date": "2025-07-14",
+      "summary": "Comparing single vs. multi-clock circuit network strategies for 44k legendary stack inserters.",
+      "tags": ["circuits", "ups", "inserters"],
+      "featured": true
+    },
+    {
+      "slug": "clocked-mining-drills",
+      "source": "benchmarks/2025-11-11-clocked-mining-drills",
+      "title": "Clocked Mining Drills",
+      "date": "2025-11-11",
+      "summary": "UPS impact of clock-gating mining drills.",
+      "tags": ["circuits", "drills"],
+      "featured": true
+    }
+  ]
+}

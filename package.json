@@ -4,8 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "sync": "node scripts/sync-content.mjs",
+    "dev": "node scripts/sync-content.mjs && vite",
+    "build": "node scripts/sync-content.mjs && tsc -b && vite build",
     "preview": "vite preview",
     "lint": "tsc -b --noEmit"
   },
