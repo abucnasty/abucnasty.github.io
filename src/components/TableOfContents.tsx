@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Link, Typography } from '@mui/material';
 
 interface Heading {
@@ -47,27 +47,44 @@ interface TableOfContentsProps {
 export function TableOfContents({ markdown }: TableOfContentsProps) {
   const headings = useMemo(() => parseHeadings(markdown), [markdown]);
   const [activeId, setActiveId] = useState<string>('');
+  const navRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!activeId || !navRef.current) return;
+    const activeEl = navRef.current.querySelector<HTMLElement>(`[data-toc-id="${activeId}"]`);
+    if (!activeEl) return;
+    const nav = navRef.current;
+    const elTop = activeEl.offsetTop;
+    const elBottom = elTop + activeEl.offsetHeight;
+    const navTop = nav.scrollTop;
+    const navBottom = navTop + nav.clientHeight;
+    if (elTop < navTop || elBottom > navBottom) {
+      nav.scrollTo({ top: elTop - nav.clientHeight / 2, behavior: 'smooth' });
+    }
+  }, [activeId]);
 
   useEffect(() => {
     if (headings.length === 0) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        // Pick the first intersecting entry (topmost in viewport)
-        const intersecting = entries.filter((e) => e.isIntersecting);
-        if (intersecting.length > 0) {
-          setActiveId(intersecting[0].target.id);
-        }
-      },
-      { rootMargin: '0px 0px -70% 0px', threshold: 0 },
-    );
+    const headingEls = headings
+      .map(({ id }) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null);
 
-    headings.forEach(({ id }) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
+    const onScroll = () => {
+      // Find the last heading whose top edge is at or above the middle of the viewport
+      const mid = window.scrollY + window.innerHeight * 0.3;
+      let active = headingEls[0];
+      for (const el of headingEls) {
+        if (el.offsetTop <= mid) active = el;
+        else break;
+      }
+      if (active) setActiveId(active.id);
+    };
 
-    return () => observer.disconnect();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll(); // set initial state
+
+    return () => window.removeEventListener('scroll', onScroll);
   }, [headings]);
 
   if (headings.length === 0) return null;
@@ -84,6 +101,7 @@ export function TableOfContents({ markdown }: TableOfContentsProps) {
       </Typography>
       <Box
         component="nav"
+        ref={navRef}
         sx={{
           display: 'flex',
           flexDirection: 'column',
@@ -96,6 +114,7 @@ export function TableOfContents({ markdown }: TableOfContentsProps) {
           <Link
             key={id}
             href={`#${id}`}
+            data-toc-id={id}
             underline="none"
             onClick={(e) => {
               e.preventDefault();
