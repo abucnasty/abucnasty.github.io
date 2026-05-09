@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { Alert, Box, Button, Chip, CircularProgress, Divider, Link, Stack, Typography } from '@mui/material';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import GitHubIcon from '@mui/icons-material/GitHub';
 import DownloadIcon from '@mui/icons-material/Download';
 import index from '../generated/index.json';
 import type { ContentIndex } from '../content';
@@ -97,7 +97,7 @@ export function BenchmarkDetail() {
           variant="outlined"
           size="small"
           fullWidth
-          endIcon={<OpenInNewIcon />}
+          startIcon={<GitHubIcon />}
           sx={{ mb: 1 }}
         >
           View on GitHub

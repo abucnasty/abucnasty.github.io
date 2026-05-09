@@ -1,10 +1,12 @@
-import { Box, Button, Stack, Typography } from '@mui/material';
+import { Avatar, Box, Button, Stack, Typography } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import index from '../generated/index.json';
 import type { ContentIndex } from '../content';
 import { BenchmarkCard } from '../components/BenchmarkCard';
+import { SocialLinks } from '../components/SocialLinks';
 
 const content = index as ContentIndex;
+const AVATAR_URL = 'https://avatars.githubusercontent.com/u/213731755?v=4';
 
 export function Home() {
   const featured = content.benchmarks.filter((b) => b.featured);
@@ -17,31 +19,79 @@ export function Home() {
           backgroundColor: 'background.paper',
           borderLeft: '6px solid',
           borderColor: 'primary.main',
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          gap: { xs: 4, md: 6 },
+          alignItems: { xs: 'flex-start', md: 'center' },
         }}
       >
-        <Typography variant="overline" sx={{ color: 'primary.main', letterSpacing: 2 }}>
-          Factorio Benchmarks
-        </Typography>
-        <Typography variant="h2" sx={{ fontWeight: 700, mt: 1 }}>
-          Performance data for serious factories.
-        </Typography>
-        <Typography variant="h6" sx={{ color: 'text.secondary', mt: 2, maxWidth: 720 }}>
-          Curated UPS benchmarks, blueprint registry, and tools — all open source.
-        </Typography>
-        <Stack direction="row" spacing={2} sx={{ mt: 4 }}>
-          <Button component={RouterLink} to="/benchmarks" variant="contained" size="large">
-            Browse benchmarks
-          </Button>
-          <Button component={RouterLink} to="/blueprints" variant="outlined" size="large" color="secondary">
-            Blueprints
-          </Button>
-        </Stack>
+        <Avatar
+          src={AVATAR_URL}
+          alt="abucnasty"
+          sx={{
+            width: { xs: 120, md: 180 },
+            height: { xs: 120, md: 180 },
+            border: '3px solid',
+            borderColor: 'primary.main',
+            flexShrink: 0,
+          }}
+        />
+        <Box>
+          <Typography
+            variant="overline"
+            sx={{ color: 'primary.main', letterSpacing: 2 }}
+          >
+            abucnasty
+          </Typography>
+          <Typography variant="h2" sx={{ fontWeight: 700, mt: 1, lineHeight: 1.05 }}>
+            Factorio benchmarks,
+            <br />
+            blueprints, and tools.
+          </Typography>
+          <Typography
+            variant="h6"
+            sx={{ color: 'text.secondary', mt: 2, maxWidth: 720, fontWeight: 400 }}
+          >
+            A home for the UPS research, blueprint registry, and side-projects from{' '}
+            <Box component="span" sx={{ color: 'text.primary', fontWeight: 600 }}>
+              abucnasty
+            </Box>
+            . Everything here is open source.
+          </Typography>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={2}
+            sx={{ mt: 4 }}
+            alignItems={{ xs: 'flex-start', sm: 'center' }}
+          >
+            <Button
+              component={RouterLink}
+              to="/benchmarks"
+              variant="contained"
+              size="large"
+            >
+              Browse benchmarks
+            </Button>
+            <Button
+              component={RouterLink}
+              to="/blueprints"
+              variant="outlined"
+              size="large"
+              color="secondary"
+            >
+              Blueprints
+            </Button>
+            <Box sx={{ ml: { sm: 1 } }}>
+              <SocialLinks />
+            </Box>
+          </Stack>
+        </Box>
       </Box>
 
       {featured.length > 0 && (
         <Box>
           <Typography variant="h4" sx={{ mb: 3 }}>
-            Featured
+            Featured benchmarks
           </Typography>
           <Box
             sx={{

@@ -49,6 +49,7 @@ export function parseBlueprintsMarkdown(markdown) {
   /** @type {string | undefined} */
   let pendingIcon;
   let nextTableDeprecated = false;
+  let categoryDeprecated = false;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -64,11 +65,13 @@ export function parseBlueprintsMarkdown(markdown) {
       parent = name;
       current = null;
       pendingIcon = undefined;
+      categoryDeprecated = false;
       continue;
     }
 
     if (h3) {
       const name = h3[1].trim();
+      const isDeprecatedSection = /^deprecated$/i.test(name);
       current = {
         id: slugify(`${parent}-${name}`),
         parent,
@@ -77,7 +80,8 @@ export function parseBlueprintsMarkdown(markdown) {
       };
       categories.push(current);
       pendingIcon = undefined;
-      nextTableDeprecated = false;
+      categoryDeprecated = isDeprecatedSection;
+      nextTableDeprecated = isDeprecatedSection;
       continue;
     }
 
@@ -109,7 +113,7 @@ export function parseBlueprintsMarkdown(markdown) {
       i = j - 1;
 
       for (const row of rows) {
-        const entry = rowToEntry(headers, row, nextTableDeprecated);
+        const entry = rowToEntry(headers, row, nextTableDeprecated || categoryDeprecated);
         if (entry) current.entries.push(entry);
       }
       nextTableDeprecated = false;
