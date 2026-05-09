@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { AppBar, Box, Container, Toolbar, Typography } from '@mui/material';
 import { NavLink as RouterNavLink, Link as RouterLink } from 'react-router-dom';
 import { SocialLinks } from './SocialLinks';
+import { BrandAvatar } from './BrandAvatar';
 
 const navItems = [
   { to: '/benchmarks', label: 'Benchmarks' },
@@ -18,19 +19,30 @@ export function AppShell({ children }: AppShellProps) {
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <AppBar position="sticky" color="default" elevation={0} sx={{ backgroundColor: 'background.paper' }}>
         <Toolbar sx={{ gap: 2 }}>
-          <Typography
+          <Box
             component={RouterLink}
             to="/"
-            variant="h6"
             sx={{
-              color: 'primary.main',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
               textDecoration: 'none',
-              fontWeight: 700,
-              letterSpacing: 1,
+              color: 'inherit',
             }}
           >
-            abucnasty
-          </Typography>
+            <BrandAvatar sx={{ width: 36, height: 36, borderWidth: '2px' }} />
+            <Typography
+              variant="h6"
+              sx={{
+                color: 'primary.main',
+                fontWeight: 700,
+                letterSpacing: 1,
+                display: { xs: 'none', sm: 'block' },
+              }}
+            >
+              abucnasty
+            </Typography>
+          </Box>
           <Box sx={{ flexGrow: 1 }} />
           <Box component="nav" sx={{ display: 'flex', gap: 3 }}>
             {navItems.map((item) => (

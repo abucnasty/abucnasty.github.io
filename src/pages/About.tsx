@@ -1,21 +1,15 @@
-import { Avatar, Box, Stack, Typography } from '@mui/material';
+import { Box, Stack, Typography } from '@mui/material';
 import { SocialLinks } from '../components/SocialLinks';
-
-const AVATAR_URL = 'https://avatars.githubusercontent.com/u/213731755?v=4';
+import { BrandAvatar } from '../components/BrandAvatar';
 
 export function About() {
   return (
     <Stack spacing={6}>
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={4} alignItems="flex-start">
-        <Avatar
-          src={AVATAR_URL}
-          alt="abucnasty"
+        <BrandAvatar
           sx={{
             width: { xs: 96, md: 140 },
             height: { xs: 96, md: 140 },
-            border: '3px solid',
-            borderColor: 'primary.main',
-            flexShrink: 0,
           }}
         />
         <Box>

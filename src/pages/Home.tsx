@@ -1,13 +1,13 @@
-import { Avatar, Box, Button, Stack, Typography } from '@mui/material';
+import { Box, Button, Stack, Typography } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import index from '../generated/index.json';
 import type { ContentIndex } from '../content';
 import { BenchmarkCard } from '../components/BenchmarkCard';
 import { SocialLinks } from '../components/SocialLinks';
 import { LatestVideo } from '../components/LatestVideo';
+import { BrandAvatar } from '../components/BrandAvatar';
 
 const content = index as ContentIndex;
-const AVATAR_URL = 'https://avatars.githubusercontent.com/u/213731755?v=4';
 
 export function Home() {
   const featured = content.benchmarks.filter((b) => b.featured);
@@ -26,15 +26,10 @@ export function Home() {
           alignItems: { xs: 'flex-start', md: 'center' },
         }}
       >
-        <Avatar
-          src={AVATAR_URL}
-          alt="abucnasty"
+        <BrandAvatar
           sx={{
             width: { xs: 120, md: 180 },
             height: { xs: 120, md: 180 },
-            border: '3px solid',
-            borderColor: 'primary.main',
-            flexShrink: 0,
           }}
         />
         <Box>
