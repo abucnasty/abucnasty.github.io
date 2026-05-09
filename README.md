@@ -92,7 +92,14 @@ On sync, each `factoriobin.com/post/<id>` link is fetched once to extract its pr
 
 ## Deployment
 
-GitHub Pages via Actions (Phase 4 — TBD). CI will clone `factorio-benchmarks` (sparse-checkout, manifest-driven), run `npm ci && npm run build`, and publish `dist/`. The `public/404.html` shim restores the deep-link path for client-side routing.
+Pushed to `master`, [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) handles the rest:
+
+1. Reads `content/manifest.json` and writes a sparse-checkout pattern list (every benchmark `source` + the `docs/blueprints/` directory).
+2. Shallow-clones `abucnasty/factorio-benchmarks` with `--filter=blob:none --sparse` and applies the pattern list — only the curated paths are materialized.
+3. Exports `FACTORIO_BENCHMARKS_PATH` to that clone, runs `npm ci --ignore-scripts && npm run build`.
+4. Uploads `dist/` and deploys via `actions/deploy-pages@v4`.
+
+Repo Settings → Pages → Source must be set to **GitHub Actions** for the deploy to publish. The `public/404.html` shim restores deep-link paths for the client-side router.
 
 ## Stack
 

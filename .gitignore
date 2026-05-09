@@ -24,6 +24,7 @@ pnpm-debug.log*
 src/generated
 public/benchmarks
 .cache
+.sparse-paths
 
 PROJECT.md
 PLAN.md
