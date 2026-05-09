@@ -9,6 +9,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
@@ -42,6 +43,7 @@ export function BenchmarksIndex() {
               <TableCell>Date</TableCell>
               <TableCell>Title</TableCell>
               <TableCell>Factorio</TableCell>
+              <TableCell>Platform</TableCell>
               <TableCell>Tags</TableCell>
             </TableRow>
           </TableHead>
@@ -78,6 +80,21 @@ export function BenchmarksIndex() {
                     </Typography>
                   )}
                 </TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                  {b.platform ? (
+                    <Tooltip title={b.platform}>
+                      <Chip
+                        label={formatPlatform(b.platform)}
+                        size="small"
+                        variant="outlined"
+                      />
+                    </Tooltip>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: 'text.disabled' }}>
+                      —
+                    </Typography>
+                  )}
+                </TableCell>
                 <TableCell>
                   {b.tags && b.tags.length > 0 ? (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
@@ -94,4 +111,12 @@ export function BenchmarksIndex() {
       </TableContainer>
     </Stack>
   );
+}
+
+function formatPlatform(raw: string): string {
+  const lower = raw.toLowerCase();
+  if (lower.includes('windows') || lower.startsWith('win')) return 'Windows';
+  if (lower.includes('linux')) return 'Linux';
+  if (lower.includes('mac') || lower.includes('darwin')) return 'macOS';
+  return raw;
 }

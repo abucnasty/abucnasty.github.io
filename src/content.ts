@@ -24,6 +24,7 @@ export interface BenchmarkEntry {
   tags?: string[];
   featured?: boolean;
   factorioVersion?: string;
+  platform?: string;
   githubUrl: string;
   readmeGithubUrl: string;
   saves: BenchmarkSave[];

@@ -80,6 +80,7 @@ async function syncBenchmark(entry, githubBase, rawBase) {
   const saves = [];
   let assetCount = 0;
   let factorioVersion;
+  let platform;
 
   for (const absFile of files) {
     const rel = path.relative(srcDir, absFile);
@@ -101,6 +102,8 @@ async function syncBenchmark(entry, githubBase, rawBase) {
       const raw = await fs.readFile(absFile, 'utf8');
       const versionMatch = raw.match(/\*\*Factorio Version:\*\*\s*([\d.]+)/i);
       if (versionMatch) factorioVersion = versionMatch[1];
+      const platformMatch = raw.match(/\*\*Platform:\*\*\s*([^\r\n]+)/i);
+      if (platformMatch) platform = platformMatch[1].trim();
       const rewritten = rewriteMarkdownAssetPaths(raw, entry.slug);
       await fs.writeFile(path.join(outMdDir, 'README.md'), rewritten);
       continue;
@@ -116,6 +119,7 @@ async function syncBenchmark(entry, githubBase, rawBase) {
   return {
     ...entry,
     factorioVersion,
+    platform,
     githubUrl: `${githubBase}/tree/${'master'}/${entry.source}`,
     readmeGithubUrl: `${githubBase}/blob/master/${entry.source}/README.md`,
     saves,
