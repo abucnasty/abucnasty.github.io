@@ -48,14 +48,12 @@ const mods = [
     description: 'Select machines to extract crafting speeds and productivity bonuses. Export data for use with the Clock Generator tool.',
     url: 'https://mods.factorio.com/mod/clock-generator-sidecar',
     sourceUrl: 'https://github.com/abucnasty/factorio-scripts',
-    downloads: 324,
   },
   {
     name: 'Particle Free Disposal',
     description: 'UPS mod that removes all particles related to destroying chests with a railgun.',
     url: 'https://mods.factorio.com/mod/particle_free_disposal',
     sourceUrl: 'https://github.com/abucnasty/particle-free-disposal',
-    downloads: 265,
   },
 ];
 
@@ -230,9 +228,6 @@ export function Tools() {
                 <Box>
                   <Typography variant="h6" sx={{ lineHeight: 1.2 }}>
                     {mod.name}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    {mod.downloads} downloads
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
                     {mod.description}
