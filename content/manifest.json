@@ -340,7 +340,8 @@
     {
       "slug": "uncommon-purple",
       "source": "benchmarks/uncommon-purple",
-      "title": "Uncommon Purple"
+      "title": "Uncommon Purple",
+      "date": "2025-07-02"
     },
     {
       "slug": "uncommon-red-science-v3",
@@ -350,7 +351,8 @@
     {
       "slug": "uncommon-stone-miners",
       "source": "benchmarks/uncommon-stone-miners",
-      "title": "Uncommon Stone Miners"
+      "title": "Uncommon Stone Miners",
+      "date": "2026-04-15"
     }
   ]
 }

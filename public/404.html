@@ -4,11 +4,13 @@
     <meta charset="utf-8" />
     <title>Redirecting…</title>
     <script>
-      // SPA fallback for GitHub Pages: preserve the requested path and let
-      // the React router handle routing on the index page.
-      sessionStorage.redirect = location.href;
+      // SPA fallback for GitHub Pages: encode the requested path as a query
+      // parameter and redirect to the root so React Router can handle it.
+      var l = window.location;
+      l.replace(
+        l.origin + '/?path=' + encodeURIComponent(l.pathname + l.search) + l.hash
+      );
     </script>
-    <meta http-equiv="refresh" content="0;URL='/'" />
   </head>
   <body></body>
 </html>

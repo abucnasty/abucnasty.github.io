@@ -61,12 +61,12 @@
   <body>
     <div id="root"></div>
     <script>
-      // Restore the deep-link URL that 404.html stashed in sessionStorage.
+      // Restore the deep-link path that 404.html encoded as ?path=...
       (function () {
-        var redirect = sessionStorage.redirect;
-        delete sessionStorage.redirect;
-        if (redirect && redirect !== location.href) {
-          history.replaceState(null, '', redirect);
+        var params = new URLSearchParams(window.location.search);
+        var path = params.get('path');
+        if (path) {
+          history.replaceState(null, '', path);
         }
       })();
     </script>
