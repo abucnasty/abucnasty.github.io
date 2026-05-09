@@ -7,6 +7,7 @@ import { BrandAvatar } from './BrandAvatar';
 const navItems = [
   { to: '/benchmarks', label: 'Benchmarks' },
   { to: '/blueprints', label: 'Blueprints' },
+  { to: '/tools', label: 'Tools' },
   { to: '/about', label: 'About' },
 ];
 

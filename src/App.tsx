@@ -5,6 +5,7 @@ import { BenchmarksIndex } from './pages/BenchmarksIndex';
 import { BenchmarkDetail } from './pages/BenchmarkDetail';
 import { Blueprints } from './pages/Blueprints';
 import { About } from './pages/About';
+import { Tools } from './pages/Tools';
 import { NotFound } from './pages/NotFound';
 
 export function App() {
@@ -16,6 +17,7 @@ export function App() {
         <Route path="/benchmarks/:slug" element={<BenchmarkDetail />} />
         <Route path="/blueprints" element={<Blueprints />} />
         <Route path="/about" element={<About />} />
+        <Route path="/tools" element={<Tools />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppShell>
