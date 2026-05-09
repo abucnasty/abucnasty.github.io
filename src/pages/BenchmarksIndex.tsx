@@ -1,5 +1,4 @@
 import {
-  Box,
   Chip,
   Link as MuiLink,
   Stack,
@@ -44,7 +43,6 @@ export function BenchmarksIndex() {
               <TableCell>Title</TableCell>
               <TableCell>Factorio</TableCell>
               <TableCell>Platform</TableCell>
-              <TableCell>Tags</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -94,15 +92,6 @@ export function BenchmarksIndex() {
                       —
                     </Typography>
                   )}
-                </TableCell>
-                <TableCell>
-                  {b.tags && b.tags.length > 0 ? (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {b.tags.map((t) => (
-                        <Chip key={t} label={t} size="small" />
-                      ))}
-                    </Box>
-                  ) : null}
                 </TableCell>
               </TableRow>
             ))}
