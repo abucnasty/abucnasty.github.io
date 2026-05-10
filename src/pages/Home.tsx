@@ -28,8 +28,8 @@ export function Home() {
       >
         <BrandAvatar
           sx={{
-            width: { xs: 120, md: 180 },
-            height: { xs: 120, md: 180 },
+            width: { xs: 96, sm: 120, md: 180 },
+            height: { xs: 96, sm: 120, md: 180 },
           }}
         />
         <Box>
@@ -39,7 +39,15 @@ export function Home() {
           >
             abucnasty
           </Typography>
-          <Typography variant="h2" sx={{ fontWeight: 700, mt: 1, lineHeight: 1.05 }}>
+          <Typography
+            variant="h2"
+            sx={{
+              fontWeight: 700,
+              mt: 1,
+              lineHeight: { xs: 1.12, sm: 1.08, md: 1.05 },
+              fontSize: { xs: '2rem', sm: '2.8rem' },
+            }}
+          >
             Factorio benchmarks,
             <br />
             blueprints, and tools.
