@@ -10,18 +10,23 @@
  * - Blueprints README is copied to src/generated/blueprints.md
  *
  * Source repo path resolution:
+ *   - `.env` and `.env.local` (if present) are loaded from the site root.
  *   1. $FACTORIO_BENCHMARKS_PATH  (preferred — used in CI)
  *   2. ../factorio/factorio-benchmarks  (local dev fallback)
  */
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import dotenv from 'dotenv';
 import { parseBlueprintsMarkdown } from './parse-blueprints.mjs';
 import { aggregateScenarioCsv } from './lib/aggregate.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..');
+
+dotenv.config({ path: path.join(ROOT, '.env') });
+dotenv.config({ path: path.join(ROOT, '.env.local'), override: true });
 
 const MANIFEST_PATH = path.join(ROOT, 'content', 'manifest.json');
 const GENERATED_DIR = path.join(ROOT, 'src', 'generated');

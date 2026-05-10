@@ -38,7 +38,12 @@ public/
 
 ## Local development
 
-Prerequisite: clone `factorio-benchmarks` next to this repo (`../factorio/factorio-benchmarks`) **or** set `FACTORIO_BENCHMARKS_PATH` to point at it.
+Prerequisite: clone `factorio-benchmarks` next to this repo (`../factorio/factorio-benchmarks`) **or** set `FACTORIO_BENCHMARKS_PATH` in a local `.env` file.
+
+```sh
+cp .env.example .env
+# edit .env if your clone lives somewhere else
+```
 
 ```sh
 npm install
