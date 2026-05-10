@@ -29,7 +29,7 @@ export function Blueprints() {
   );
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={{ xs: 2, sm: 3 }}>
       <Box>
         <Typography variant="h3">Blueprints</Typography>
         <Typography variant="body1" sx={{ color: 'text.secondary', mt: 1 }}>
@@ -37,7 +37,7 @@ export function Blueprints() {
         </Typography>
       </Box>
 
-      <Stack direction="row" spacing={2} alignItems="center">
+      <Stack direction="row" spacing={{ xs: 1, sm: 2 }} alignItems="center">
         <Switch
           checked={showDeprecated}
           onChange={(_, v) => setShowDeprecated(v)}
@@ -65,7 +65,7 @@ export function Blueprints() {
           >
             {parent}
           </Typography>
-          <Stack spacing={2}>
+          <Stack spacing={{ xs: 1.25, sm: 2 }}>
             {cats.map((cat) => {
               const entries = showDeprecated
                 ? cat.entries
@@ -77,24 +77,24 @@ export function Blueprints() {
                     direction="row"
                     spacing={1}
                     alignItems="center"
-                    sx={{ mb: 0.5, px: 1 }}
+                    sx={{ mb: 0.5, px: { xs: 0.75, sm: 1 } }}
                   >
                     {cat.iconUrl && (
                       <Box
                         component="img"
                         src={cat.iconUrl}
                         alt=""
-                        sx={{ width: 20, height: 20, objectFit: 'contain' }}
+                        sx={{ width: { xs: 16, sm: 20 }, height: { xs: 16, sm: 20 }, objectFit: 'contain' }}
                       />
                     )}
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                       {cat.name}
                     </Typography>
                     <Chip
                       label={entries.length}
                       size="small"
                       variant="outlined"
-                      sx={{ height: 18, fontSize: 11 }}
+                      sx={{ height: { xs: 16, sm: 18 }, fontSize: { xs: 10, sm: 11 } }}
                     />
                   </Stack>
                   <Box

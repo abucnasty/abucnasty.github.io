@@ -26,11 +26,11 @@ export function BlueprintRow({ entry }: BlueprintRowProps) {
   return (
     <Stack
       direction="row"
-      spacing={1.5}
+      spacing={{ xs: 1, sm: 1.5 }}
       alignItems="center"
       sx={{
-        py: 1,
-        px: 1,
+        py: { xs: 0.65, sm: 1 },
+        px: { xs: 0.75, sm: 1 },
         borderBottom: 1,
         borderColor: 'divider',
         opacity: entry.deprecated ? 0.55 : 1,
@@ -44,8 +44,8 @@ export function BlueprintRow({ entry }: BlueprintRowProps) {
         onMouseEnter={() => previewUrl && setOpen(true)}
         onMouseLeave={() => setOpen(false)}
         sx={{
-          width: 56,
-          height: 32,
+          width: { xs: 44, sm: 56 },
+          height: { xs: 26, sm: 32 },
           flexShrink: 0,
           backgroundColor: 'common.black',
           display: 'flex',
@@ -99,15 +99,47 @@ export function BlueprintRow({ entry }: BlueprintRowProps) {
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
+            fontSize: { xs: '0.8rem', sm: '0.875rem' },
           }}
           title={entry.description}
         >
           {entry.description}
         </Typography>
+
+        <Stack
+          direction="row"
+          spacing={0.5}
+          alignItems="center"
+          sx={{ mt: 0.5, display: { xs: 'flex', sm: 'none' }, flexWrap: 'wrap', gap: 0.5 }}
+        >
+          {entry.version && (
+            <Chip
+              label={`v${entry.version}`}
+              size="small"
+              color="secondary"
+              variant="outlined"
+              sx={{ height: 18, fontSize: 10 }}
+            />
+          )}
+          {entry.deprecated && (
+            <Chip
+              label="Deprecated"
+              size="small"
+              color="warning"
+              variant="outlined"
+              sx={{ height: 18, fontSize: 10 }}
+            />
+          )}
+        </Stack>
       </Box>
 
       {/* Inline metadata */}
-      <Stack direction="row" spacing={0.5} alignItems="center" sx={{ flexShrink: 0 }}>
+      <Stack
+        direction="row"
+        spacing={0.5}
+        alignItems="center"
+        sx={{ flexShrink: 0, display: { xs: 'none', sm: 'flex' } }}
+      >
         {entry.version && (
           <Chip
             label={`v${entry.version}`}
@@ -137,7 +169,7 @@ export function BlueprintRow({ entry }: BlueprintRowProps) {
       </Stack>
 
       {/* Actions */}
-      <Stack direction="row" spacing={0} sx={{ flexShrink: 0 }}>
+      <Stack direction="row" spacing={0} sx={{ flexShrink: 0, ml: { xs: 0.5, sm: 0 } }}>
         {entry.factoriobinUrl && (
           <Tooltip title="Open on factoriobin">
             <IconButton
@@ -147,6 +179,7 @@ export function BlueprintRow({ entry }: BlueprintRowProps) {
               rel="noopener noreferrer"
               size="small"
               color="primary"
+              sx={{ p: { xs: 0.35, sm: 0.6 } }}
             >
               <OpenInNewIcon fontSize="small" />
             </IconButton>
@@ -161,6 +194,7 @@ export function BlueprintRow({ entry }: BlueprintRowProps) {
               rel="noopener noreferrer"
               size="small"
               sx={{ color: 'error.main' }}
+              
             >
               <YouTubeIcon fontSize="small" />
             </IconButton>
