@@ -6,6 +6,8 @@ import { BenchmarkDetail } from './pages/BenchmarkDetail';
 import { Blueprints } from './pages/Blueprints';
 import { About } from './pages/About';
 import { Tools } from './pages/Tools';
+import { BlogIndex } from './pages/BlogIndex';
+import { BlogPost } from './pages/BlogPost';
 import { NotFound } from './pages/NotFound';
 
 export function App() {
@@ -18,6 +20,8 @@ export function App() {
         <Route path="/blueprints" element={<Blueprints />} />
         <Route path="/about" element={<About />} />
         <Route path="/tools" element={<Tools />} />
+        <Route path="/blog" element={<BlogIndex />} />
+        <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppShell>
