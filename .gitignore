@@ -25,6 +25,7 @@ pnpm-debug.log*
 # Generated content (sync output)
 src/generated
 public/benchmarks
+public/blog
 .cache
 .sparse-paths
 

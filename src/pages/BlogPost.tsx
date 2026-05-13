@@ -21,6 +21,17 @@ const markdownModules = import.meta.glob('../blog/posts/**/*.md', {
 
 const tsxModules = import.meta.glob('../blog/posts/**/*.tsx');
 
+/**
+ * Transform relative image paths in markdown to absolute blog post URLs.
+ * Converts patterns like `![alt](./screenshots/image.jpg)` to `![alt](/blog/posts/<slug>/screenshots/image.jpg)`
+ */
+function transformMarkdownImagePaths(markdown: string, slug: string): string {
+  return markdown.replace(
+    /!\[([^\]]*)\]\(\.\/([^)]+)\)/g,
+    `![$1](/blog/posts/${slug}/$2)`
+  );
+}
+
 export function BlogPost() {
   const { slug = '' } = useParams();
   const post = blogPosts.find((p) => p.slug === slug);
@@ -53,7 +64,8 @@ export function BlogPost() {
       }
       loader()
         .then((md) => {
-          setMarkdown(md as string);
+          const transformed = transformMarkdownImagePaths(md as string, post.slug);
+          setMarkdown(transformed);
           setLoading(false);
         })
         .catch((e) => {
