@@ -12,6 +12,11 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import YouTubeIcon from '@mui/icons-material/YouTube';
 
 const YT_CHANNEL_ID = 'UCSdiZ-R-EnnHqKvCrZdQMBQ';
+// The uploads playlist ID for any channel is the channel ID with the `UC`
+// prefix replaced by `UU`. Fetching this playlist's first item costs 1 quota
+// unit, vs. 100 for the search endpoint.
+const YT_UPLOADS_PLAYLIST_ID = `UU${YT_CHANNEL_ID.slice(2)}`;
+const YT_API_KEY = import.meta.env.VITE_YT_API_KEY as string | undefined;
 
 interface LatestVideo {
   id: string;
@@ -20,29 +25,36 @@ interface LatestVideo {
   url: string;
 }
 
+interface PlaylistItemsResponse {
+  items?: Array<{
+    snippet?: {
+      title?: string;
+      publishedAt?: string;
+      resourceId?: { videoId?: string };
+    };
+  }>;
+}
+
 async function fetchLatestVideo(): Promise<LatestVideo | null> {
-  // YouTube's own RSS feed has no CORS headers, so we go through rss2json,
-  // which proxies any public RSS feed and returns CORS-enabled JSON.
-  const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${YT_CHANNEL_ID}`;
-  const res = await fetch(
-    `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`,
-  );
+  if (!YT_API_KEY) {
+    console.warn('VITE_YT_API_KEY is not set; latest video cannot be loaded.');
+    return null;
+  }
+  const url =
+    `https://www.googleapis.com/youtube/v3/playlistItems` +
+    `?part=snippet&maxResults=1&playlistId=${YT_UPLOADS_PLAYLIST_ID}` +
+    `&key=${YT_API_KEY}`;
+  const res = await fetch(url);
   if (!res.ok) return null;
-  const data = (await res.json()) as {
-    status?: string;
-    items?: Array<{ title: string; link: string; pubDate?: string; guid?: string }>;
-  };
-  if (data.status !== 'ok' || !data.items?.length) return null;
-  const item = data.items[0];
-  const idFromGuid = /yt:video:([\w-]+)/.exec(item.guid ?? '')?.[1];
-  const idFromLink = /[?&]v=([\w-]+)/.exec(item.link ?? '')?.[1];
-  const id = idFromGuid ?? idFromLink;
-  if (!id) return null;
+  const data = (await res.json()) as PlaylistItemsResponse;
+  const snippet = data.items?.[0]?.snippet;
+  const id = snippet?.resourceId?.videoId;
+  if (!snippet || !id) return null;
   return {
     id,
-    title: item.title,
-    published: item.pubDate,
-    url: item.link,
+    title: snippet.title ?? '',
+    published: snippet.publishedAt,
+    url: `https://www.youtube.com/watch?v=${id}`,
   };
 }
 
