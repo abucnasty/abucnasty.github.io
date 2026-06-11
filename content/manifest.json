@@ -353,6 +353,12 @@
       "source": "benchmarks/uncommon-stone-miners",
       "title": "Uncommon Stone Miners",
       "date": "2026-04-15"
+    },
+    {
+      "slug": "2026-06-10-splitter-miners",
+      "source": "benchmarks/2026-06-10-splitter-miners",
+      "title": "Splitter Miners",
+      "date": "2026-06-11"
     }
   ]
 }
