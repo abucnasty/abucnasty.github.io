@@ -359,6 +359,12 @@
       "source": "benchmarks/2026-06-10-splitter-miners",
       "title": "Splitter Miners",
       "date": "2026-06-11"
+    },
+    {
+      "slug": "2026-06-30-vulcanus-stone-voiding",
+      "source": "benchmarks/2026-06-30-vulcanus-stone-voiding",
+      "title": "Vulcanus Stone Voiding",
+      "date": "2026-06-30"
     }
   ]
 }
