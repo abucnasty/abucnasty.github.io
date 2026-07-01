@@ -365,6 +365,12 @@
       "source": "benchmarks/2026-06-30-vulcanus-stone-voiding",
       "title": "Vulcanus Stone Voiding",
       "date": "2026-06-30"
+    },
+    {
+      "slug": "2026-07-01-inserter-performance-2.1.9",
+      "source": "benchmarks/2026-07-01-inserter-performance-2.1.9",
+      "title": "Inserter Performance 2.0 vs 2.1",
+      "date": "2026-07-01"
     }
   ]
 }
