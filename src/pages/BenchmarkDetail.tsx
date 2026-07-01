@@ -131,7 +131,6 @@ export function BenchmarkDetail() {
                         href={s.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        download
                         sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: 14, wordBreak: 'break-all' }}
                       >
                         <DownloadIcon fontSize="small" />

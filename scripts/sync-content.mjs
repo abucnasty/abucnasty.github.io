@@ -52,10 +52,11 @@ async function main() {
 
   const githubBase = `https://github.com/${manifest.sourceRepo.owner}/${manifest.sourceRepo.repo}`;
   const rawBase = `https://raw.githubusercontent.com/${manifest.sourceRepo.owner}/${manifest.sourceRepo.repo}/${manifest.sourceRepo.branch}`;
+  const githubDownloadBase = `${githubBase}/raw/refs/heads/${manifest.sourceRepo.branch}`;
 
   const benchmarks = [];
   for (const entry of manifest.benchmarks) {
-    const result = await syncBenchmark(entry, githubBase, rawBase);
+    const result = await syncBenchmark(entry, githubBase, rawBase, githubDownloadBase);
     benchmarks.push(result);
     log(`✓ ${entry.slug} (${result.assetCount} assets, ${result.saves.length} saves)`);
   }
@@ -75,8 +76,9 @@ async function main() {
  * @param {BenchmarkEntry} entry
  * @param {string} githubBase
  * @param {string} rawBase
+ * @param {string} githubDownloadBase
  */
-async function syncBenchmark(entry, githubBase, rawBase) {
+async function syncBenchmark(entry, githubBase, rawBase, githubDownloadBase) {
   const srcDir = path.join(SOURCE_REPO_PATH, entry.source);
   await assertDir(srcDir, `benchmark source missing: ${entry.source}`);
 
@@ -99,10 +101,11 @@ async function syncBenchmark(entry, githubBase, rawBase) {
     if (path.basename(rel) === '.DS_Store') continue;
 
     if (ext === '.zip') {
+      const relPath = rel.split(path.sep).join('/');
       saves.push({
         name: path.basename(rel),
-        path: rel.split(path.sep).join('/'),
-        url: `${rawBase}/${entry.source}/${rel.split(path.sep).join('/')}`,
+        path: relPath,
+        url: `${githubDownloadBase}/${entry.source}/${relPath}?download=`,
       });
       continue;
     }

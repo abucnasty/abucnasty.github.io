@@ -11,7 +11,7 @@ export interface BenchmarkSave {
   name: string;
   /** Path within the source benchmark folder. */
   path: string;
-  /** Direct download URL (raw.githubusercontent.com). */
+  /** Direct download URL (github.com raw with ?download= for LFS support). */
   url: string;
 }
 
