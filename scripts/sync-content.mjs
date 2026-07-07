@@ -130,7 +130,8 @@ async function syncBenchmark(entry, githubBase, rawBase, lfsWorkerUrl) {
         }
         const oidMatch = pointer.match(/^oid sha256:([0-9a-f]{64})$/m);
         if (!oidMatch) throw new Error(`No LFS OID found for ${gitObjectPath} — ensure the file is tracked by git-lfs`);
-        url = `${lfsWorkerUrl}/objects/${oidMatch[1]}`;
+        // Append the original filename so browsers save the file with the right name.
+        url = `${lfsWorkerUrl}/objects/${oidMatch[1]}/${encodeURIComponent(path.basename(relPath))}`;
       } else {
         const githubDownloadBase = `https://github.com/${entry.source}/raw/refs/heads/master`;
         url = `${githubDownloadBase}/${entry.source}/${relPath}?download=`;
