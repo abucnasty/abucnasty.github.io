@@ -5,6 +5,7 @@
     "repo": "factorio-benchmarks",
     "branch": "master"
   },
+  "lfsWorkerUrl": "https://factorio-lfs.abucnasty.workers.dev",
   "blueprintsSource": "docs/blueprints/README.md",
   "benchmarks": [
     {

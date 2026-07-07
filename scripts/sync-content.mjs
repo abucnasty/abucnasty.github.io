@@ -15,6 +15,7 @@
  *   2. ../factorio/factorio-benchmarks  (local dev fallback)
  */
 import { promises as fs } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
@@ -52,11 +53,11 @@ async function main() {
 
   const githubBase = `https://github.com/${manifest.sourceRepo.owner}/${manifest.sourceRepo.repo}`;
   const rawBase = `https://raw.githubusercontent.com/${manifest.sourceRepo.owner}/${manifest.sourceRepo.repo}/${manifest.sourceRepo.branch}`;
-  const githubDownloadBase = `${githubBase}/raw/refs/heads/${manifest.sourceRepo.branch}`;
+  const lfsWorkerUrl = manifest.lfsWorkerUrl ?? null;
 
   const benchmarks = [];
   for (const entry of manifest.benchmarks) {
-    const result = await syncBenchmark(entry, githubBase, rawBase, githubDownloadBase);
+    const result = await syncBenchmark(entry, githubBase, rawBase, lfsWorkerUrl);
     benchmarks.push(result);
     log(`✓ ${entry.slug} (${result.assetCount} assets, ${result.saves.length} saves)`);
   }
@@ -76,9 +77,9 @@ async function main() {
  * @param {BenchmarkEntry} entry
  * @param {string} githubBase
  * @param {string} rawBase
- * @param {string} githubDownloadBase
+ * @param {string|null} lfsWorkerUrl
  */
-async function syncBenchmark(entry, githubBase, rawBase, githubDownloadBase) {
+async function syncBenchmark(entry, githubBase, rawBase, lfsWorkerUrl) {
   const srcDir = path.join(SOURCE_REPO_PATH, entry.source);
   await assertDir(srcDir, `benchmark source missing: ${entry.source}`);
 
@@ -102,11 +103,39 @@ async function syncBenchmark(entry, githubBase, rawBase, githubDownloadBase) {
 
     if (ext === '.zip') {
       const relPath = rel.split(path.sep).join('/');
-      saves.push({
-        name: path.basename(rel),
-        path: relPath,
-        url: `${githubDownloadBase}/${entry.source}/${relPath}?download=`,
-      });
+      const gitObjectPath = `${entry.source}/${relPath}`;
+      let url;
+      if (lfsWorkerUrl) {
+        // Prefer reading via git (always returns the raw LFS pointer text,
+        // regardless of whether the smudge filter has materialised the file).
+        // Fall back to reading the file directly for files not yet committed.
+        let pointer;
+        try {
+          pointer = execFileSync(
+            'git', ['-C', SOURCE_REPO_PATH, 'show', `HEAD:${gitObjectPath}`],
+            { encoding: 'utf8' },
+          );
+        } catch {
+          // File may be gitignored or untracked — skip it silently.
+          const ignored = (() => {
+            try {
+              execFileSync('git', ['-C', SOURCE_REPO_PATH, 'check-ignore', '-q', absFile]);
+              return true;
+            } catch {
+              return false;
+            }
+          })();
+          if (ignored) continue;
+          pointer = await fs.readFile(absFile, 'utf8').catch(() => '');
+        }
+        const oidMatch = pointer.match(/^oid sha256:([0-9a-f]{64})$/m);
+        if (!oidMatch) throw new Error(`No LFS OID found for ${gitObjectPath} — ensure the file is tracked by git-lfs`);
+        url = `${lfsWorkerUrl}/objects/${oidMatch[1]}`;
+      } else {
+        const githubDownloadBase = `https://github.com/${entry.source}/raw/refs/heads/master`;
+        url = `${githubDownloadBase}/${entry.source}/${relPath}?download=`;
+      }
+      saves.push({ name: path.basename(rel), path: relPath, url });
       continue;
     }
 
