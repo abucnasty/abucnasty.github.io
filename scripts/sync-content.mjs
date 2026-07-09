@@ -151,7 +151,11 @@ async function syncBenchmark(entry, githubBase, rawBase, lfsWorkerUrl) {
       continue;
     }
 
-    // Everything else (images, svgs, csvs, supplementary md) → public assets.
+    // Skip file types that are only needed at build time or not served to users.
+    const skipExts = new Set(['.csv', '.sh', '.ps1', '.bat', '.txt', '.json']);
+    if (skipExts.has(ext)) continue;
+
+    // Everything else (images, svgs, supplementary md) → public assets.
     const dest = path.join(outAssetsDir, rel);
     await fs.mkdir(path.dirname(dest), { recursive: true });
     await fs.copyFile(absFile, dest);
