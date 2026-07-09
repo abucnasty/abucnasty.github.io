@@ -64,6 +64,7 @@ jobs:
             "https://github.com/${OWNER}/${REPO}.git" "${DEST}"
           mapfile -t SPARSE_PATHS < .sparse-paths
           (cd "${DEST}" && git sparse-checkout set -- "${SPARSE_PATHS[@]}")
+          (cd "${DEST}" && git lfs pull --include="*.csv")
           echo "FACTORIO_BENCHMARKS_PATH=${DEST}" >> "$GITHUB_ENV"
         shell: bash
 
