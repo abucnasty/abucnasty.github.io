@@ -146,7 +146,8 @@ async function syncBenchmark(entry, githubBase, rawBase, lfsWorkerUrl) {
       if (versionMatch) factorioVersion = versionMatch[1];
       const platformMatch = raw.match(/\*\*Platform:\*\*\s*([^\r\n]+)/i);
       if (platformMatch) platform = platformMatch[1].trim();
-      const rewritten = rewriteMarkdownAssetPaths(raw, entry.slug);
+      const rawGithubDir = `${rawBase}/${entry.source}`;
+      const rewritten = rewriteMarkdownAssetPaths(raw, entry.slug, rawGithubDir);
       await fs.writeFile(path.join(outMdDir, 'README.md'), rewritten);
       continue;
     }
@@ -257,13 +258,17 @@ async function aggregateBenchmarkChart(entry, srcDir, outMdDir) {
  * Handles ![alt](path), <img src="path">, and any href that starts with `./`.
  * Leaves absolute URLs (http://, https://, /), anchors (#), and `mailto:` alone.
  *
+ * Regular hyperlinks [text](relative-path) are rewritten to the raw GitHub URL
+ * so that files not served from the site (e.g. .txt, .zip) download from GitHub.
+ *
  * @param {string} markdown
  * @param {string} slug
+ * @param {string|null} [githubRawDir] - raw GitHub URL prefix for the benchmark source dir
  */
-function rewriteMarkdownAssetPaths(markdown, slug) {
+function rewriteMarkdownAssetPaths(markdown, slug, githubRawDir = null) {
   const prefix = `/benchmarks/${slug}`;
 
-  const rewritePath = (p) => {
+  const rewriteAssetPath = (p) => {
     const trimmed = p.trim();
     if (!trimmed) return trimmed;
     if (/^[a-z]+:/i.test(trimmed)) return trimmed; // http:, https:, mailto:, data:
@@ -273,14 +278,31 @@ function rewriteMarkdownAssetPaths(markdown, slug) {
     return `${prefix}/${normalized}`;
   };
 
-  // ![alt](path "title"?)
+  const rewriteLinkPath = (p) => {
+    const trimmed = p.trim();
+    if (!trimmed) return trimmed;
+    if (/^[a-z]+:/i.test(trimmed)) return trimmed;
+    if (trimmed.startsWith('#')) return trimmed;
+    if (trimmed.startsWith('/')) return trimmed;
+    const normalized = trimmed.replace(/^\.\//, '');
+    // Point to raw GitHub so files not copied to the site (e.g. .txt) are reachable.
+    if (githubRawDir) return `${githubRawDir}/${normalized}`;
+    return `${prefix}/${normalized}`;
+  };
+
+  // ![alt](path "title"?) — images stay site-local
   let out = markdown.replace(/(!\[[^\]]*\]\()([^)\s]+)([^)]*\))/g, (_m, pre, p, post) => {
-    return `${pre}${rewritePath(p)}${post}`;
+    return `${pre}${rewriteAssetPath(p)}${post}`;
+  });
+
+  // [text](path) — regular hyperlinks (not images) go to GitHub raw
+  out = out.replace(/(?<!!)\[([^\]]*)\]\(([^)\s"']+)([^)]*)\)/g, (_m, text, p, rest) => {
+    return `[${text}](${rewriteLinkPath(p)}${rest})`;
   });
 
   // <img src="..."> / <img src='...'>
   out = out.replace(/(<img\b[^>]*\bsrc\s*=\s*)(["'])([^"']+)(\2)/gi, (_m, pre, q, p, qq) => {
-    return `${pre}${q}${rewritePath(p)}${qq}`;
+    return `${pre}${q}${rewriteAssetPath(p)}${qq}`;
   });
 
   return out;
