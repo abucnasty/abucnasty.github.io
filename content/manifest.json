@@ -378,6 +378,12 @@
       "source": "benchmarks/2026-07-03-mining-drill-performance-2.1.9",
       "title": "Mining Drill Performance Improvements in 2.1",
       "date": "2026-07-03"
+    },
+    {
+      "slug": "2026-07-09-automation-science-2.1.9",
+      "source": "benchmarks/2026-07-05-automation-science-2.1.9",
+      "title": "Automation Science Q1 vs Q2 in 2.1.9",
+      "date": "2026-07-09"
     }
   ]
 }
