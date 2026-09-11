@@ -384,6 +384,18 @@
       "source": "benchmarks/2026-07-05-automation-science-2.1.9",
       "title": "Automation Science Q1 vs Q2 in 2.1.9",
       "date": "2026-07-09"
+    },
+    {
+      "slug": "2026-09-07-chunk-aligned-space-platforms",
+      "source": "benchmarks/2026-09-07-chunk-aligned-space-platforms",
+      "title": "Chunk Aligned Space Platforms",
+      "date": "2026-09-07"
+    },
+    {
+      "slug": "2026-09-11-disabled-collectors",
+      "source": "benchmarks/2026-09-11-disabled-collectors",
+      "title": "Disabled Collectors",
+      "date": "2026-09-11"
     }
   ]
 }
