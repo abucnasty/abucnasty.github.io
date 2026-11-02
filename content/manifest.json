@@ -396,6 +396,12 @@
       "source": "benchmarks/2026-09-11-disabled-collectors",
       "title": "Disabled Collectors",
       "date": "2026-09-11"
+    },
+    {
+      "slug": "2026-11-02-inserter-update-order",
+      "source": "benchmarks/2026-11-02-inserter-update-order",
+      "title": "Inserter Update Order",
+      "date": "2026-11-02"
     }
   ]
 }
