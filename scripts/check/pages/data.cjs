@@ -92,5 +92,17 @@ module.exports = {
       'each topic count matches its benchmarks',
       (topics ?? []).every((t) => t.count === list.filter((b) => b.topic === t.id).length),
     );
+
+    const expectedCounts = { inserters: 12, science: 12, mining: 8, engine: 6, vehicles: 3, space: 2 };
+    const untopiced = list.filter((b) => !b.topic).map((b) => b.slug);
+    expect('every benchmark has a topic', untopiced.length === 0, untopiced.join(','));
+    const countsOk =
+      (topics ?? []).length === Object.keys(expectedCounts).length &&
+      Object.entries(expectedCounts).every(([id, n]) => (topics ?? []).find((t) => t.id === id)?.count === n);
+    expect(
+      'index has six topics with the counts from topics.md',
+      countsOk,
+      (topics ?? []).map((t) => `${t.id}=${t.count}`).join(', '),
+    );
   },
 };
