@@ -70,10 +70,13 @@ Rules:
 
 - A heading is an ATX heading of level 1–4. Headings inside fenced code blocks are not headings.
 - A section runs from its heading to the next heading of the **same or a higher** level (fewer or equal `#`), or the end of the file. Deeper headings belong to it.
-- `plainFirstParagraph`: take the lines up to the first blank line. If that block is a table, an image, an HTML block, a heading or a fenced code block, return `''`. Otherwise:
-  - a block that is a list contributes its first item only;
-  - strip list markers, emphasis markers (`*`, `_` used as emphasis, `**`), inline code backticks and HTML tags; replace `[text](url)` with `text`;
+- `plainFirstParagraph(body, { maxLength = 280, allowList = false })`: take the lines up to the first blank line. If that block is a table, an image, an HTML block, a heading or a fenced code block, return `''`. Otherwise:
+  - a block that is a list gives its first item when `allowList` is set, and `''` when it is not (a list item is a fragment, not a statement);
+  - a prose block followed directly by list items, with no blank line, keeps only the lines before the first list item;
+  - strip list markers, emphasis markers (`*`, `_` used as emphasis, `**`), inline code backticks, inline images and HTML tags; replace `[text](url)` with `text`;
   - collapse whitespace to single spaces; upper-case the first letter;
+  - a result that ends with a colon is a lead-in to a list: return `''`;
+  - a result shorter than 30 characters is joined with the next block when that block is prose by the same rules;
   - if longer than `maxLength`, cut at the last space before it and append `…`.
 
 ## What the sync produces
@@ -83,8 +86,8 @@ For each benchmark, from the source README (after `stripOwnToc`, before link rew
 | Field in `index.json` | Source |
 |---|---|
 | `topic` | manifest `topic` |
-| `question` | `plainFirstParagraph` of the section named "The Question" or "Question" |
-| `finding` | `plainFirstParagraph` of "The Answer" / "Answer"; if there is none, of "Conclusion" / "Conclusions", and only when the result is at least 30 characters |
+| `question` | `plainFirstParagraph` (lists allowed) of the section named "The Question" or "Question"; when it contains a `?`, cut after the last one |
+| `finding` | `plainFirstParagraph` (no lists) of "The Answer" / "Answer"; if there is none, of "Conclusion" / "Conclusions". Kept only when it is at least 12 characters |
 | `cpu` | the `**CPU:**` header line, parsed like `**Platform:**` in `readme-meta.mjs` |
 
 Omit a field when it has no value. Top level of `index.json` gains
@@ -114,7 +117,7 @@ Coverage line: after the benchmarks loop, log one line such as
 This module opens no page; it reads `ctx.data` and the generated folder.
 
 - Every `question` and `finding` is 1–281 characters, starts with an upper-case letter or a digit, and contains none of: a backtick, `**`, `](`, a newline, a leading `- `.
-- A benchmark has `question.md` exactly when it has `question`. Where `answer.md` exists, `question.md` exists and `finding` is set.
+- A benchmark has `question.md` exactly when it has `question`. Where `answer.md` exists, `question.md` exists. No `finding` ends with a colon or is shorter than 12 characters.
 - No generated `README.md` still contains a heading that was lifted (for a benchmark with `question.md`, no "The Question" / "Question" heading; with `answer.md`, no "The Answer" / "Answer" heading).
 - `topics` counts add up to the number of benchmarks that have a `topic`, and every `topic` is a listed id.
 
