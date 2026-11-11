@@ -1,4 +1,5 @@
-import { Box, Chip, Stack, Typography } from '@mui/material';
+import { Box, ButtonBase, Chip, Stack, Typography } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
 import { Link as RouterLink } from 'react-router-dom';
 import index from '../generated/index.json';
 import blueprints from '../generated/blueprints.json';
@@ -11,6 +12,7 @@ import { LatestVideo } from '../components/LatestVideo';
 import { BrandAvatar } from '../components/BrandAvatar';
 import { SectionHeader } from '../components/SectionHeader';
 import { ListRow, RowGroup } from '../components/ListRow';
+import { useSearch } from '../components/SearchDialog';
 
 const content = index as ContentIndex;
 const blueprintIndex = blueprints as BlueprintIndex;
@@ -111,6 +113,7 @@ const alsoHere: Array<{ title: string; subtitle: string; to: string }> = [
 ];
 
 export function Home() {
+  const { open: openSearch } = useSearch();
   return (
     <Stack spacing={layout.sectionGap}>
       <Box
@@ -138,6 +141,33 @@ export function Home() {
           <SocialLinks />
         </Box>
       </Box>
+
+      <ButtonBase
+        data-home-search
+        onClick={openSearch}
+        sx={{
+          display: 'flex',
+          justifyContent: 'flex-start',
+          gap: 1.5,
+          width: '100%',
+          height: layout.touchTarget,
+          px: 2,
+          textAlign: 'left',
+          backgroundColor: 'background.paper',
+          color: 'text.secondary',
+          fontSize: 14,
+          '&:hover': { color: 'text.primary' },
+        }}
+      >
+        <SearchIcon fontSize="small" />
+        <Box
+          component="span"
+          // On a phone the sentence wraps to two lines inside the 44px box rather than cutting off.
+          sx={{ minWidth: 0, whiteSpace: 'normal', textWrap: 'balance', fontSize: { xs: 13, sm: 14 }, lineHeight: { xs: 1.3, sm: 'inherit' } }}
+        >
+          Search {content.benchmarks.length} benchmarks, {activeBlueprints} blueprints and {content.saveStats.count} save files
+        </Box>
+      </ButtonBase>
 
       <Box
         sx={{

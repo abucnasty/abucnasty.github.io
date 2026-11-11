@@ -1,10 +1,12 @@
-import { useState, type ReactNode } from 'react';
-import { AppBar, Box, Container, Drawer, IconButton, List, ListItem, ListItemButton, ListItemText, Toolbar, Typography } from '@mui/material';
+import { useEffect, useState, type ReactNode } from 'react';
+import { AppBar, Box, ButtonBase, Container, Drawer, IconButton, List, ListItem, ListItemButton, ListItemText, Toolbar, Typography } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import SearchIcon from '@mui/icons-material/Search';
 import { NavLink as RouterNavLink, Link as RouterLink } from 'react-router-dom';
 import { SocialLinks } from './SocialLinks';
 import { BrandAvatar } from './BrandAvatar';
 import { layout } from '../layout';
+import { SearchProvider, useSearch } from './SearchDialog';
 
 const navItems = [
   { to: '/benchmarks', label: 'Benchmarks' },
@@ -18,8 +20,42 @@ interface AppShellProps {
   children: ReactNode;
 }
 
+/** True when typing here should type, not trigger a shortcut. */
+function isTextEntry(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+}
+
 export function AppShell({ children }: AppShellProps) {
+  return (
+    <SearchProvider>
+      <Shell>{children}</Shell>
+    </SearchProvider>
+  );
+}
+
+function Shell({ children }: AppShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { isOpen: searchOpen, open: openSearch } = useSearch();
+
+  // "/" opens search unless the visitor is typing somewhere; Ctrl+K and Cmd+K work everywhere.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.isComposing) return;
+      const ctrlK = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k';
+      const slash = e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey && !isTextEntry(e.target);
+      if (!ctrlK && !slash) return;
+      e.preventDefault();
+      openSearch();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [openSearch]);
+
+  // Search opens over the menu drawer, not under it.
+  useEffect(() => {
+    if (searchOpen) setDrawerOpen(false);
+  }, [searchOpen]);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -73,6 +109,41 @@ export function AppShell({ children }: AppShellProps) {
               </Typography>
             ))}
           </Box>
+
+          {/* Search: a small field from md, an icon button below it. */}
+          <ButtonBase
+            onClick={openSearch}
+            aria-label="Search the site"
+            sx={{
+              display: { xs: 'none', md: 'flex' },
+              alignItems: 'center',
+              gap: 1,
+              height: 32,
+              px: 1.25,
+              border: 1,
+              borderColor: 'divider',
+              color: 'text.secondary',
+              fontSize: 14,
+              '&:hover': { color: 'text.primary', backgroundColor: 'action.hover' },
+            }}
+          >
+            <SearchIcon sx={{ fontSize: 18 }} />
+            <span>Search</span>
+            <Box
+              component="kbd"
+              aria-hidden
+              sx={{ fontFamily: 'inherit', fontSize: 12, px: 0.75, border: 1, borderColor: 'divider', lineHeight: 1.4 }}
+            >
+              /
+            </Box>
+          </ButtonBase>
+          <IconButton
+            sx={{ display: { xs: 'flex', md: 'none' }, width: layout.touchTarget, height: layout.touchTarget }}
+            onClick={openSearch}
+            aria-label="Search the site"
+          >
+            <SearchIcon />
+          </IconButton>
 
           {/* Mobile hamburger */}
           <IconButton

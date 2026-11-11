@@ -12,6 +12,7 @@ A read-only frontend over the benchmarks repo — a curated subset of its write-
 - **Home** — an intro strip, the latest benchmarks and posts (newest first, featured benchmarks below), a short "Also here" list linking to the other pages, and the latest video.
 - **Tools** — benchmarking tools, utilities and mods, plus tutorials, from `src/data/tools.ts`.
 - **Blog** — posts from `src/blog/`.
+- **Search** — a dialog reachable from every page (header button, `/`, Ctrl/Cmd+K, the box on Home) that finds benchmarks, blueprints, tools, posts and save files; the save index is only fetched once something is typed.
 - **About** — who runs the site and how to get in touch.
 
 The site itself contains **no benchmark content in source control** beyond the curation manifest. A sync script at build time reads the local `factorio-benchmarks` clone (or a path set via `$FACTORIO_BENCHMARKS_PATH` in CI), copies / rewrites assets into `public/` and `src/generated/`, and produces typed JSON indexes the React app imports directly.
