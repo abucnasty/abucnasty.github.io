@@ -59,7 +59,13 @@ jobs:
           REPO='${{ steps.manifest.outputs.repo }}'
           BRANCH='${{ steps.manifest.outputs.branch }}'
           DEST="${RUNNER_TEMP}/${REPO}"
-          git clone --depth 1 --filter=blob:none --sparse \
+          # blob:limit=1k rather than blob:none: the /saves index covers every
+          # save in the repo, not just the folders checked out below, and reads
+          # their git-lfs pointers (~130 bytes each) straight from git objects.
+          # This filter delivers all of those with the clone itself; anything
+          # bigger is still only downloaded for the sparse paths. (The sync
+          # bulk-fetches whatever it still lacks, so it works with any filter.)
+          git clone --depth 1 --filter=blob:limit=1k --sparse \
             --branch "${BRANCH}" \
             "https://github.com/${OWNER}/${REPO}.git" "${DEST}"
           mapfile -t SPARSE_PATHS < .sparse-paths

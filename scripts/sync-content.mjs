@@ -8,6 +8,9 @@
  * - All other non-`.zip` files are copied (preserving sub-paths) to public/benchmarks/<slug>/
  * - `.zip` files are NOT copied; raw GitHub URLs are emitted in the index instead.
  * - Blueprints README is copied to src/generated/blueprints.md
+ * - Every `.zip` committed to the source repo (curated or not) is indexed into
+ *   src/generated/saves.json for the /saves page — see scripts/lib/save-index.mjs.
+ *   That index is read from git objects at HEAD, so the source must be a git clone.
  *
  * Source repo path resolution:
  *   - `.env` and `.env.local` (if present) are loaded from the site root.
@@ -21,6 +24,8 @@ import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { parseBlueprintsMarkdown } from './parse-blueprints.mjs';
 import { aggregateScenarioCsv } from './lib/aggregate.mjs';
+import { parseReadmeMeta } from './lib/readme-meta.mjs';
+import { buildSaveIndex } from './lib/save-index.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,7 +46,7 @@ const SOURCE_REPO_PATH =
 /** @typedef {{ name: string, scenarios: ChartScenario[], metrics?: string[] }} ChartGroup */
 /** @typedef {{ scenarios?: ChartScenario[], groups?: ChartGroup[], metrics?: string[], removeFirstTicks?: number, maxTicks?: number, window?: number }} ChartConfig */
 /** @typedef {{ slug: string, source: string, title: string, date?: string, summary?: string, tags?: string[], featured?: boolean, chart?: ChartConfig }} BenchmarkEntry */
-/** @typedef {{ sourceRepo: { owner: string, repo: string, branch: string }, blueprintsSource: string, benchmarks: BenchmarkEntry[] }} Manifest */
+/** @typedef {{ sourceRepo: { owner: string, repo: string, branch: string }, lfsWorkerUrl?: string, blueprintsSource: string, benchmarks: BenchmarkEntry[] }} Manifest */
 
 async function main() {
   const manifest = /** @type {Manifest} */ (
@@ -54,6 +59,15 @@ async function main() {
   const githubBase = `https://github.com/${manifest.sourceRepo.owner}/${manifest.sourceRepo.repo}`;
   const rawBase = `https://raw.githubusercontent.com/${manifest.sourceRepo.owner}/${manifest.sourceRepo.repo}/${manifest.sourceRepo.branch}`;
   const lfsWorkerUrl = manifest.lfsWorkerUrl ?? null;
+
+  // First, so a broken save index fails the sync before any slower work.
+  const saveIndex = buildSaveIndex({
+    repoPath: SOURCE_REPO_PATH,
+    lfsWorkerUrl: manifest.lfsWorkerUrl,
+    benchmarks: manifest.benchmarks,
+    log,
+  });
+  await fs.writeFile(path.join(GENERATED_DIR, 'saves.json'), JSON.stringify(saveIndex));
 
   const benchmarks = [];
   for (const entry of manifest.benchmarks) {
@@ -142,10 +156,7 @@ async function syncBenchmark(entry, githubBase, rawBase, lfsWorkerUrl) {
 
     if (rel.toLowerCase() === 'readme.md') {
       const raw = await fs.readFile(absFile, 'utf8');
-      const versionMatch = raw.match(/\*\*Factorio Version:\*\*\s*([\d.]+)/i);
-      if (versionMatch) factorioVersion = versionMatch[1];
-      const platformMatch = raw.match(/\*\*Platform:\*\*\s*([^\r\n]+)/i);
-      if (platformMatch) platform = platformMatch[1].trim();
+      ({ factorioVersion, platform } = parseReadmeMeta(raw));
       const rawGithubDir = `${rawBase}/${entry.source}`;
       const rewritten = rewriteMarkdownAssetPaths(raw, entry.slug, rawGithubDir);
       await fs.writeFile(path.join(outMdDir, 'README.md'), rewritten);
@@ -418,6 +429,7 @@ async function resetOutputDirs() {
   await fs.rm(path.join(GENERATED_DIR, 'benchmarks'), { recursive: true, force: true });
   await fs.rm(path.join(GENERATED_DIR, 'blueprints.md'), { force: true });
   await fs.rm(path.join(GENERATED_DIR, 'index.json'), { force: true });
+  await fs.rm(path.join(GENERATED_DIR, 'saves.json'), { force: true });
   await fs.rm(PUBLIC_BENCHMARKS_DIR, { recursive: true, force: true });
   await fs.mkdir(GENERATED_DIR, { recursive: true });
   await fs.mkdir(PUBLIC_BENCHMARKS_DIR, { recursive: true });
