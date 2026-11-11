@@ -44,6 +44,9 @@ module.exports = {
     // --- links to and from benchmarks ---------------------------------------------------------
     const topBar = 48;
     const mapped = [...new Set(data.index.topics.flatMap((t) => t.blueprintCategories ?? []))];
+    // Hash scrolling does not depend on a mapping: the first, a middle and the last visible category.
+    const visible = data.blueprints.categories.filter((c) => c.entries.some((e) => !e.deprecated)).map((c) => c.id);
+    const hashIds = [...new Set([visible[0], visible[Math.floor(visible.length / 2)], visible[visible.length - 1]])];
     // Where a category block is relative to the window: its top, bottom and the page's scroll.
     const place = (page, id) =>
       page.evaluate((i) => {
@@ -55,13 +58,13 @@ module.exports = {
     const inView = (p) => p && p.top >= topBar && p.top < p.win;
 
     for (const viewport of ['desktop', 'phone']) {
-      // A fresh load of /blueprints#<id>, for the first, the last and (if far down) every mapped category.
-      for (const id of mapped) {
+      // A fresh load of /blueprints#<id> brings that category into view.
+      for (const id of hashIds) {
         const page = await open(`/blueprints#${id}`, viewport);
         await page.waitForTimeout(400);
         const p = await place(page, id);
         expect(`${viewport}: /blueprints#${id} brings the category into view below the top bar`, inView(p), JSON.stringify(p));
-        if (id === mapped[mapped.length - 1]) await shot(page, `blueprints-hash-${viewport}`);
+        if (id === hashIds[hashIds.length - 1]) await shot(page, `blueprints-hash-${viewport}`);
       }
 
       // A category whose entries are all deprecated is hidden by default; the hash does nothing.
@@ -95,14 +98,17 @@ module.exports = {
           `${JSON.stringify(got)} vs ${JSON.stringify(want)}`,
         );
       }
-      const id = mapped[0];
-      const link = page.locator(`[id="${id}"] a[href^="/benchmarks?topic="]`).first();
-      const lb = await link.boundingBox();
-      const hb = await page.locator(`[id="${id}"]`).boundingBox();
-      expect(`${id}: topic link sits at the right edge of the category header`, lb && hb && Math.abs(lb.x + lb.width - (hb.x + hb.width)) <= 16, `${JSON.stringify(lb)} in ${JSON.stringify(hb)}`);
+      // Runs only while some topic maps to a category.
+      const id = mapped.find((m) => visible.includes(m));
+      if (id) {
+        const link = page.locator(`[id="${id}"] a[href^="/benchmarks?topic="]`).first();
+        const lb = await link.boundingBox();
+        const hb = await page.locator(`[id="${id}"]`).boundingBox();
+        expect(`${id}: topic link sits at the right edge of the category header`, lb && hb && Math.abs(lb.x + lb.width - (hb.x + hb.width)) <= 16, `${JSON.stringify(lb)} in ${JSON.stringify(hb)}`);
+      }
     }
 
-    // From a benchmark page, each "… blueprints" link lands on /blueprints with the category in view.
+    // Runs only while some topic maps to a category. From a benchmark page, each "… blueprints" link lands on /blueprints with the category in view.
     for (const t of data.index.topics.filter((x) => (x.blueprintCategories ?? []).length > 0)) {
       const b = data.index.benchmarks.find((x) => x.topic === t.id);
       for (const id of t.blueprintCategories) {

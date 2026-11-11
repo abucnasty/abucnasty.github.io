@@ -424,6 +424,7 @@ module.exports = {
       );
     }
 
+    // Runs only while some topic maps to blueprint categories.
     if (mappedTopic) {
       const b = pick(mappedTopic);
       const page = await open(`/benchmarks/${b.slug}`, 'desktop');
@@ -432,6 +433,19 @@ module.exports = {
       const bp = (gw?.links ?? []).filter(([h]) => h.startsWith('/blueprints#'));
       const wantBp = mappedTopic.blueprintCategories.map((id) => [`/blueprints#${id}`, `${catName.get(id)} blueprints`]);
       expect(`${b.slug}: one blueprint link per mapped category, in order`, JSON.stringify(bp) === JSON.stringify(wantBp), `${JSON.stringify(bp)} vs ${JSON.stringify(wantBp)}`);
+    }
+
+    // Without a mapping for its topic, "Goes with this" has no link to the Blueprints page.
+    const unmappedWithSaves = all.find((b) => b.saves.length > 0 && (topicsById.get(b.topic)?.blueprintCategories ?? []).length === 0);
+    if (unmappedWithSaves) {
+      const page = await open(`/benchmarks/${unmappedWithSaves.slug}`, 'desktop');
+      await page.waitForSelector('main h1', { timeout: 10000 });
+      const gw = (await groups(page)).find((g) => g.heading === 'Goes with this');
+      expect(
+        `${unmappedWithSaves.slug}: topic has no blueprint categories, so "Goes with this" links nothing to /blueprints`,
+        gw && gw.links.length > 0 && gw.links.every(([h]) => !h.startsWith('/blueprints')),
+        JSON.stringify(gw),
+      );
     }
 
     // A benchmark with neither saves nor mapped blueprints has no "Goes with this".
