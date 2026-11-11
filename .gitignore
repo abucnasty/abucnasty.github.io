@@ -31,3 +31,8 @@ public/blog
 
 PROJECT.md
 PLAN.md
+# TypeScript incremental build output
+*.tsbuildinfo
+
+# Layout check screenshots
+check-output
