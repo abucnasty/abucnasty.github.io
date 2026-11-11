@@ -29,6 +29,7 @@ import { parseBlueprintsMarkdown } from './parse-blueprints.mjs';
 import { aggregateScenarioCsv } from './lib/aggregate.mjs';
 import { parseReadmeMeta } from './lib/readme-meta.mjs';
 import { stripOwnToc } from './lib/strip-toc.mjs';
+import { findSection, removeSection, plainFirstParagraph } from './lib/readme-sections.mjs';
 import { buildSaveIndex, createHeadReader } from './lib/save-index.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -49,14 +50,19 @@ const SOURCE_REPO_PATH =
 /** @typedef {{ name: string, csv: string }} ChartScenario */
 /** @typedef {{ name: string, scenarios: ChartScenario[], metrics?: string[] }} ChartGroup */
 /** @typedef {{ scenarios?: ChartScenario[], groups?: ChartGroup[], metrics?: string[], removeFirstTicks?: number, maxTicks?: number, window?: number }} ChartConfig */
-/** @typedef {{ slug: string, source: string, title: string, date?: string, summary?: string, tags?: string[], featured?: boolean, chart?: ChartConfig }} BenchmarkEntry */
-/** @typedef {{ sourceRepo: { owner: string, repo: string, branch: string }, lfsWorkerUrl?: string, blueprintsSource: string, benchmarks: BenchmarkEntry[] }} Manifest */
+/** @typedef {{ slug: string, source: string, title: string, date?: string, summary?: string, tags?: string[], topic?: string, featured?: boolean, chart?: ChartConfig }} BenchmarkEntry */
+/** @typedef {{ id: string, label: string }} Topic */
+/** @typedef {{ sourceRepo: { owner: string, repo: string, branch: string }, lfsWorkerUrl?: string, blueprintsSource: string, topics?: Topic[], benchmarks: BenchmarkEntry[] }} Manifest */
+
+/** Shortest "Conclusion" paragraph worth showing as a one-line finding. */
+const MIN_FINDING_LENGTH = 30;
 
 async function main() {
   const manifest = /** @type {Manifest} */ (
     JSON.parse(await fs.readFile(MANIFEST_PATH, 'utf8'))
   );
 
+  validateTopics(manifest);
   await assertSourceExists();
   await resetOutputDirs();
 
@@ -82,6 +88,15 @@ async function main() {
     log(`✓ ${entry.slug} (${result.assetCount} assets, ${result.saves.length} saves)`);
   }
 
+  const total = benchmarks.length;
+  const count = (key) => benchmarks.filter((b) => b[key]).length;
+  log(
+    `✓ topics ${count('topic')}/${total} · questions ${count('question')}/${total} · findings ${count('finding')}/${total} · cpu ${count('cpu')}/${total}`,
+  );
+  if (count('topic') < total) {
+    log(`⚠ ${total - count('topic')} of ${total} benchmarks have no topic`);
+  }
+
   await syncBlueprints(manifest.blueprintsSource, rawBase);
   log(`✓ blueprints.md`);
 
@@ -91,6 +106,11 @@ async function main() {
     JSON.stringify(
       {
         sourceRepo: manifest.sourceRepo,
+        topics: (manifest.topics ?? []).map((t) => ({
+          id: t.id,
+          label: t.label,
+          count: benchmarks.filter((b) => b.topic === t.id).length,
+        })),
         benchmarks,
         saveStats: { count: saveIndex.files.length, bytes: saveIndex.files.reduce((sum, file) => sum + file[1], 0) },
       },
@@ -124,6 +144,9 @@ async function syncBenchmark(entry, githubBase, branch, rawBase, treeBase, lfsWo
   let assetCount = 0;
   let factorioVersion;
   let platform;
+  let cpu;
+  let question;
+  let finding;
 
   for (const absFile of files) {
     const rel = path.relative(srcDir, absFile);
@@ -168,12 +191,18 @@ async function syncBenchmark(entry, githubBase, branch, rawBase, treeBase, lfsWo
 
     if (rel.toLowerCase() === 'readme.md') {
       const raw = await fs.readFile(absFile, 'utf8');
-      ({ factorioVersion, platform } = parseReadmeMeta(raw));
+      ({ factorioVersion, platform, cpu } = parseReadmeMeta(raw));
       const rawGithubDir = `${rawBase}/${entry.source}`;
+      // Order matters: strip the README's own contents list, lift the question and answer
+      // sections, and only then rewrite assets and links, so all three files are rewritten alike.
       const stripped = stripOwnToc(raw);
+      const lifted = liftQuestionAndAnswer(stripped);
+      ({ question, finding } = lifted);
       const linkRewrites = planLinkRewrites(stripped, entry.source, treeBase, lfsWorkerUrl, headReader);
-      const rewritten = rewriteMarkdownAssetPaths(stripped, entry.slug, rawGithubDir, linkRewrites);
-      await fs.writeFile(path.join(outMdDir, 'README.md'), rewritten);
+      const rewrite = (md) => rewriteMarkdownAssetPaths(md, entry.slug, rawGithubDir, linkRewrites);
+      await fs.writeFile(path.join(outMdDir, 'README.md'), rewrite(lifted.readme));
+      if (lifted.questionBody) await fs.writeFile(path.join(outMdDir, 'question.md'), rewrite(lifted.questionBody) + '\n');
+      if (lifted.answerBody) await fs.writeFile(path.join(outMdDir, 'answer.md'), rewrite(lifted.answerBody) + '\n');
       continue;
     }
 
@@ -197,11 +226,78 @@ async function syncBenchmark(entry, githubBase, branch, rawBase, treeBase, lfsWo
     ...entry,
     factorioVersion,
     platform,
+    cpu,
+    question,
+    finding,
     githubUrl: `${githubBase}/tree/${branch}/${entry.source}`,
     readmeGithubUrl: `${githubBase}/blob/${branch}/${entry.source}/README.md`,
     saves,
     assetCount,
     timeseries,
+  };
+}
+
+/**
+ * Fail the sync on a bad topic list: duplicate ids, or a benchmark whose `topic` is not one.
+ *
+ * @param {Manifest} manifest
+ */
+function validateTopics(manifest) {
+  const ids = new Set();
+  for (const topic of manifest.topics ?? []) {
+    if (ids.has(topic.id)) throw new Error(`manifest: duplicate topic id "${topic.id}"`);
+    ids.add(topic.id);
+  }
+  for (const entry of manifest.benchmarks) {
+    if (entry.topic !== undefined && !ids.has(entry.topic)) {
+      throw new Error(`manifest: benchmark "${entry.slug}" has topic "${entry.topic}", which is not in "topics"`);
+    }
+  }
+}
+
+/**
+ * Read the question and finding off a README and lift their sections out of it.
+ * The question section is lifted only when it has a plain-text first paragraph, and the
+ * answer section only along with it; a "Conclusion" gives a finding but is never lifted.
+ *
+ * @param {string} markdown - README after stripOwnToc, before any rewriting
+ * @returns {{ readme: string, question?: string, finding?: string, questionBody?: string, answerBody?: string }}
+ */
+function liftQuestionAndAnswer(markdown) {
+  const questionNames = ['The Question', 'Question'];
+  const answerNames = ['The Answer', 'Answer'];
+
+  const questionSection = findSection(markdown, questionNames);
+  const answerSection = findSection(markdown, answerNames);
+  const conclusionSection = findSection(markdown, ['Conclusion', 'Conclusions']);
+
+  const question = questionSection ? plainFirstParagraph(questionSection.body) : '';
+  let finding = answerSection ? plainFirstParagraph(answerSection.body) : '';
+  if (!finding && conclusionSection) {
+    const fromConclusion = plainFirstParagraph(conclusionSection.body);
+    if (fromConclusion.length >= MIN_FINDING_LENGTH) finding = fromConclusion;
+  }
+
+  let readme = markdown;
+  let questionBody;
+  let answerBody;
+  if (question) {
+    questionBody = questionSection.body;
+    readme = removeSection(readme, questionSection);
+    // Positions moved; look the answer up again in what is left.
+    const remaining = findSection(readme, answerNames);
+    if (remaining) {
+      answerBody = remaining.body;
+      readme = removeSection(readme, remaining);
+    }
+  }
+
+  return {
+    readme,
+    question: question || undefined,
+    finding: finding || undefined,
+    questionBody,
+    answerBody: answerBody || undefined,
   };
 }
 

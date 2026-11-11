@@ -25,6 +25,14 @@ export interface BenchmarkEntry {
   featured?: boolean;
   factorioVersion?: string;
   platform?: string;
+  /** From the README's `**CPU:**` header line, e.g. "Ryzen 9800X3D". */
+  cpu?: string;
+  /** Id of an entry in `ContentIndex.topics`; set in the manifest. */
+  topic?: string;
+  /** The question the benchmark asks, as one line of plain text (from its "Question" section). */
+  question?: string;
+  /** One-line result, as plain text (from its "Answer" section, else its "Conclusion"). */
+  finding?: string;
   githubUrl: string;
   readmeGithubUrl: string;
   saves: BenchmarkSave[];
@@ -33,8 +41,18 @@ export interface BenchmarkEntry {
   timeseries?: boolean;
 }
 
+/** A topic from the manifest, in display order. */
+export interface TopicSummary {
+  id: string;
+  label: string;
+  /** Number of benchmarks with this topic. */
+  count: number;
+}
+
 export interface ContentIndex {
   sourceRepo: SourceRepo;
+  /** Manifest order; empty when the manifest lists none. */
+  topics: TopicSummary[];
   benchmarks: BenchmarkEntry[];
   saveStats: { count: number; bytes: number };
 }

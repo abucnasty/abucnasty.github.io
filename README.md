@@ -108,7 +108,23 @@ What sync does for each entry:
 - Rewrites `README.md` image refs (`./image.png`, `<img src="…">`) → `/benchmarks/<slug>/…` and writes the result to `src/generated/benchmarks/<slug>/README.md`
 - Rewrites relative links in the README (`[text](./file)`) to GitHub: a folder links to its `tree` page, a file tracked by git-lfs links to its download on the LFS worker (decided from the git object at `HEAD`, like saves), anything else to the raw file
 - Skips `.zip` files in the copy; their entries in the index link to the download on the LFS worker (`lfsWorkerUrl` in the manifest) so saves remain downloadable without bundling them
-- Extracts `**Factorio Version:**` and `**Platform:**` from the README header and stores them on the index entry
+- Extracts `**Factorio Version:**`, `**Platform:**` and `**CPU:**` from the README header and stores them on the index entry
+- Reads the README's "The Question" / "Question" section into `question` and its "The Answer" / "Answer" section into `finding`, both as one line of plain text ([scripts/lib/readme-sections.mjs](scripts/lib/readme-sections.mjs)). With no answer, `finding` comes from the first paragraph of a "Conclusion" section when that is at least 30 characters. A field with no value is left out
+- When there is a question, lifts its section out of the generated `README.md` into `question.md` next to it, and the answer section into `answer.md` (a "Conclusion" is never lifted). Links and images in all three files are rewritten the same way
+- Logs a coverage line, e.g. `✓ topics 0/43 · questions 14/43 · findings 25/43 · cpu 6/43`
+
+### Topics
+
+The manifest may list topics, in display order, and give each benchmark one:
+
+```jsonc
+{
+  "topics": [{ "id": "inserters", "label": "Inserters & clocking" }],
+  "benchmarks": [{ "slug": "…", "topic": "inserters" }]   // topic is optional
+}
+```
+
+A `topic` that is not the `id` of a listed topic, or two topics with the same `id`, fails the sync. A benchmark with no topic is allowed; sync warns with the count. `index.json` gets `topics: [{ id, label, count }]` in manifest order.
 
 Independently of the manifest, sync also writes `src/generated/saves.json` — see the next section.
 
