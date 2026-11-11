@@ -26,6 +26,27 @@ module.exports = {
       readmes.length === 0 ? 'no generated READMEs found' : withToc.map((f) => path.basename(path.dirname(f))).join(','),
     );
 
+    // --- generated READMEs: links to raw.githubusercontent.com are files that browsers can open ----
+    const rawLinks = [];
+    for (const f of readmes) {
+      const text = fs.readFileSync(f, 'utf8');
+      for (const m of text.matchAll(/\]\((https:\/\/raw\.githubusercontent\.com\/[^)\s"']+)/g)) {
+        rawLinks.push(`${path.basename(path.dirname(f))}: ${m[1]}`);
+      }
+    }
+    const lastSegment = (u) => u.split('?')[0].split('#')[0].split('/').pop();
+    const badFolder = rawLinks.filter((l) => {
+      const u = l.slice(l.indexOf(': ') + 2).split('?')[0].split('#')[0];
+      return u.endsWith('/') || !/\.[A-Za-z0-9]+$/.test(lastSegment(u));
+    });
+    expect(
+      'no raw.githubusercontent.com link points at a folder',
+      rawLinks.length > 0 && badFolder.length === 0,
+      rawLinks.length === 0 ? 'no raw links found' : badFolder.join(' | '),
+    );
+    const badLfs = rawLinks.filter((l) => /\.(zip|csv|zst)(?:[?#].*)?$/i.test(l));
+    expect('no raw.githubusercontent.com link points at a git-lfs file (.zip, .csv, .zst)', badLfs.length === 0, badLfs.join(' | '));
+
     const list = data.index.benchmarks;
     const newest = [...list].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))[0];
     const withCharts = list.find((b) => b.timeseries);

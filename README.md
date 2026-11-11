@@ -6,10 +6,13 @@ Static showcase site for [abucnasty/factorio-benchmarks](https://github.com/abuc
 
 A read-only frontend over the benchmarks repo — a curated subset of its write-ups, plus every save file in it:
 
-- **Benchmarks** — a sortable table of every benchmark in the manifest, with detail pages that render each `README.md`, link to original save files on GitHub, and surface metadata (date, Factorio version, platform).
+- **Benchmarks** — a sortable table of every benchmark in the manifest, with detail pages that render each `README.md`, link to the original save files, and surface metadata (date, Factorio version, platform).
 - **Saves** — a browser for every Factorio save (`*.zip`) committed to the benchmarks repo, curated or not: folders, sizes, search, direct downloads. See [Saves page](#saves-page).
 - **Blueprints** — a dense list view of `docs/blueprints/README.md`, grouped by parent → category, with hover-popover previews scraped from factoriobin.
-- **Home** — featured benchmarks plus links.
+- **Home** — an intro strip, the latest benchmarks and posts (newest first, featured benchmarks below), a short "Also here" list linking to the other pages, and the latest video.
+- **Tools** — benchmarking tools, utilities and mods, plus tutorials, from `src/data/tools.ts`.
+- **Blog** — posts from `src/blog/`.
+- **About** — who runs the site and how to get in touch.
 
 The site itself contains **no benchmark content in source control** beyond the curation manifest. A sync script at build time reads the local `factorio-benchmarks` clone (or a path set via `$FACTORIO_BENCHMARKS_PATH` in CI), copies / rewrites assets into `public/` and `src/generated/`, and produces typed JSON indexes the React app imports directly.
 
@@ -20,10 +23,18 @@ content/manifest.json         # ← curation list — edit this to add/remove be
 scripts/
   sync-content.mjs            # build-time sync: copies assets, rewrites markdown, writes indexes
   parse-blueprints.mjs        # parses docs/blueprints/README.md into structured JSON
+  sync-blog-images.mjs        # copies blog post images into public/blog
   lib/save-index.mjs          # indexes every .zip in the source repo from git objects
+  check/                      # `npm run check`: run.cjs plus one module per page in pages/
+docs/specs/                   # work packages for the site restructure
 src/
-  components/                 # MarkdownRenderer, BlueprintRow, SaveRows, BenchmarkCard, AppShell, …
-  pages/                      # Home, BenchmarksIndex, BenchmarkDetail, Saves, Blueprints, About
+  components/                 # shared: PageHeader, SectionHeader, ListRow (+ RowGroup), DenseTable;
+                              # also MarkdownRenderer, BlueprintRow, SaveRows, AppShell, …
+  pages/                      # Home, BenchmarksIndex, BenchmarkDetail, Saves, Blueprints, Tools,
+                              # BlogIndex, BlogPost, About, NotFound
+  data/tools.ts               # the tools, mods and tutorials listed on /tools
+  blog/                       # post sources and registry.ts
+  layout.ts                   # shared sizes: header, page title, row heights, touch target, section gap
   generated/                  # ← gitignored; produced by sync-content.mjs
     index.json
     saves.json                # every save: [path, bytes, lfs oid] + per-folder metadata
@@ -96,6 +107,7 @@ What sync does for each entry:
 
 - Copies every non-`.zip` file (preserving sub-paths) → `public/benchmarks/<slug>/`
 - Rewrites `README.md` image refs (`./image.png`, `<img src="…">`) → `/benchmarks/<slug>/…` and writes the result to `src/generated/benchmarks/<slug>/README.md`
+- Rewrites relative links in the README (`[text](./file)`) to GitHub: a folder links to its `tree` page, a file tracked by git-lfs links to its download on the LFS worker (decided from the git object at `HEAD`, like saves), anything else to the raw file
 - Skips `.zip` files in the copy; their entries in the index link to the download on the LFS worker (`lfsWorkerUrl` in the manifest) so saves remain downloadable without bundling them
 - Extracts `**Factorio Version:**` and `**Platform:**` from the README header and stores them on the index entry
 
@@ -132,7 +144,7 @@ On sync, each `factoriobin.com/post/<id>` link is fetched once to extract its pr
 
 ## Deployment
 
-Pushed to `master`, [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) handles the rest:
+Pushed to `main`, [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) handles the rest:
 
 1. Reads `content/manifest.json` and writes a sparse-checkout pattern list (every benchmark `source` + the `docs/blueprints/` directory).
 2. Shallow-clones `abucnasty/factorio-benchmarks` with `--filter=blob:limit=1k --sparse` and applies the pattern list — only the curated paths are materialized. The 1 kB blob limit means every git-lfs pointer in the repo (they are ~130 bytes) arrives with the clone, which is what lets the save index cover folders that are never checked out; larger blobs are still only fetched for the curated paths.

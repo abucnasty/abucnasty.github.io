@@ -3,6 +3,7 @@ module.exports = {
   async run({ open, expect, data, shot, box, aboveFold }) {
     const entries = data.blueprints.categories.flatMap((c) => c.entries);
     const active = entries.filter((e) => !e.deprecated).length;
+    const activeCategories = data.blueprints.categories.filter((c) => c.entries.some((e) => !e.deprecated)).length;
 
     // Every row carries its description as a title attribute (for the truncated text).
     const rows = (page) => page.locator('main [title]').count();
@@ -14,6 +15,12 @@ module.exports = {
     for (const viewport of ['desktop', 'phone']) {
       const page = await open('/blueprints', viewport);
       await shot(page, `blueprints-${viewport}`);
+      const meta = (await page.locator('main h1').first().evaluate((h) => h.parentElement.textContent)) ?? '';
+      expect(
+        `${viewport}: header counts categories that have an active blueprint`,
+        meta.includes(`${active} active blueprints across ${activeCategories} categories`),
+        `${meta} (expected ${active} across ${activeCategories})`,
+      );
       expect(`${viewport}: one row per non-deprecated entry`, (await rows(page)) === active, `${await rows(page)} rows, ${active} entries`);
       const rowEls = await page.locator(rowSel).count();
       expect(`${viewport}: row selector matches one element per row`, rowEls === active, `${rowEls} elements, ${active} entries`);

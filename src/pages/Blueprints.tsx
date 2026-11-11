@@ -27,6 +27,7 @@ export function Blueprints() {
     (n, c) => n + c.entries.filter((e) => !e.deprecated).length,
     0,
   );
+  const activeCategories = data.categories.filter((c) => c.entries.some((e) => !e.deprecated)).length;
   const totalDeprecated = data.categories.reduce(
     (n, c) => n + c.entries.filter((e) => e.deprecated).length,
     0,
@@ -36,7 +37,7 @@ export function Blueprints() {
     <Stack spacing={2}>
       <PageHeader
         title="Blueprints"
-        meta={`${totalActive} active blueprints across ${data.categories.length} categories.`}
+        meta={`${totalActive} active blueprints across ${activeCategories} categories.`}
         actions={
           <Stack direction="row" spacing={{ xs: 1, sm: 2 }} alignItems="center">
             <Switch
