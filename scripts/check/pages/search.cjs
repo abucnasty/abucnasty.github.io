@@ -65,14 +65,12 @@ module.exports = {
     expect('desktop: typing starts the save index request', savesChunk(page).length === 1, savesChunk(page).join(', '));
     const firstBench = group(page, 'Benchmarks').locator('[role=option]').first();
     expect('desktop: the newest benchmark is first in the Benchmarks group', (await firstBench.getAttribute('href')) === `/benchmarks/${newest.slug}`, await firstBench.getAttribute('href'));
-    expect('desktop: no row is active after typing', (await active(page)) === null);
-    await page.keyboard.press('Enter');
-    expect('desktop: Enter with no active row does nothing', (await isOpen(page)) && new URL(page.url()).pathname === '/');
-    await page.keyboard.press('ArrowDown');
-    expect('desktop: ArrowDown activates the first row', (await active(page)) === (await optionIds(page))[0]);
+    expect('desktop: the first row is active after typing', (await active(page)) === (await optionIds(page))[0], await active(page));
+    expect('desktop: the active row is shown as selected', (await page.locator('[role=dialog] [role=option][aria-selected=true]').count()) === 1);
+    await shot(page, 'search-desktop-typed');
     await page.keyboard.press('Enter');
     await page.waitForURL(`**/benchmarks/${newest.slug}`);
-    expect('desktop: Enter opens the active row and the dialog is gone', (await closed(page)) && new URL(page.url()).pathname === `/benchmarks/${newest.slug}`, page.url());
+    expect('desktop: Enter alone opens the best match and the dialog is gone', (await closed(page)) && new URL(page.url()).pathname === `/benchmarks/${newest.slug}`, page.url());
 
     // `/` and Ctrl+K.
     await goto(page, '/blog');
@@ -119,20 +117,20 @@ module.exports = {
     await page.waitForTimeout(200);
     let ids = await optionIds(page);
     expect('desktop: a broad query shows several rows', ids.length > 2, `${ids.length} rows`);
-    await page.keyboard.press('ArrowDown');
     const a1 = await active(page);
     await page.keyboard.press('ArrowDown');
     const a2 = await active(page);
-    expect('desktop: ArrowDown moves to the first then the second row', a1 === ids[0] && a2 === ids[1], `${a1} ${a2}`);
+    expect('desktop: the first row is active, and ArrowDown moves to the second', a1 === ids[0] && a2 === ids[1], `${a1} ${a2}`);
     expect('desktop: the active row is aria-selected', (await page.locator(`[id="${a2}"]`).getAttribute('aria-selected')) === 'true');
     await page.keyboard.press('ArrowUp');
+    expect('desktop: ArrowUp returns to the first row', (await active(page)) === ids[0]);
     await page.keyboard.press('ArrowUp');
     expect('desktop: ArrowUp from the first row wraps to the last', (await active(page)) === ids[ids.length - 1], await active(page));
     await page.keyboard.press('ArrowDown');
     expect('desktop: ArrowDown from the last row wraps to the first', (await active(page)) === ids[0]);
     await page.keyboard.press('ArrowDown');
     await page.keyboard.type('b');
-    expect('desktop: typing after arrowing clears the active row', (await active(page)) === null, await active(page));
+    expect('desktop: typing after arrowing makes the first row active again', (await active(page)) === (await optionIds(page))[0], await active(page));
     expect('desktop: arrow keys leave the caret alone', await (async () => {
       await page.keyboard.press('Control+a');
       await page.keyboard.type('ab');
@@ -242,6 +240,9 @@ module.exports = {
       await all.click();
       await page.waitForURL('**/benchmarks?q=*');
       expect('desktop: following it closes the dialog and filters the page', (await closed(page)) && (await page.locator('main input').first().inputValue()) === many.term);
+      await page.locator('main tbody tr').first().waitFor();
+      const pageRows = await page.locator('main tbody tr').count();
+      expect('desktop: the "All n" count equals the rows on the page it links to', pageRows === many.n, `${many.n} in the dialog, ${pageRows} rows`);
     }
 
     // Save files.
@@ -319,13 +320,15 @@ module.exports = {
     // Home.
     await goto(page, '/');
     const homeSearch = page.locator('[data-home-search]');
-    const homeText = (await homeSearch.innerText()).replace(/\s+/g, ' ').trim();
+    const homeText = (await homeSearch.getAttribute('aria-label')) ?? '';
+    const homeVisible = (await homeSearch.innerText()).replace(/\s+/g, ' ').trim();
     const activeBlueprints = bpEntries.length;
     expect(
       'home: the search box shows the benchmark, blueprint and save-file counts',
       homeText === `Search ${index.benchmarks.length} benchmarks, ${activeBlueprints} blueprints and ${index.saveStats.count} save files`,
       homeText,
     );
+    expect('home: from sm up the box shows the full sentence', homeVisible === homeText, homeVisible);
     expect('home: the search box is 44px tall', (await homeSearch.boundingBox()).height === 44);
     await shot(page, 'search-home-desktop');
     await homeSearch.click();
@@ -374,8 +377,10 @@ module.exports = {
 
     const homeBox = await phone.locator('[data-home-search]').boundingBox();
     expect('phone: the Home search box is 44px tall and fits the width', homeBox.height === 44 && homeBox.x + homeBox.width <= 390, JSON.stringify(homeBox));
-    const fit = await phone.locator('[data-home-search] span').evaluate((el) => ({ sw: el.scrollWidth, cw: el.clientWidth, sh: el.scrollHeight, ch: el.clientHeight, bh: el.parentElement.clientHeight }));
-    expect('phone: the Home search text is not cut off', fit.sw <= fit.cw && fit.sh <= fit.bh, JSON.stringify(fit));
+    const phoneText = (await phone.locator('[data-home-search]').innerText()).replace(/\s+/g, ' ').trim();
+    const lineBox = await phone.locator('[data-home-search] span:visible').evaluate((el) => ({ h: el.getBoundingClientRect().height, sw: el.scrollWidth, cw: el.clientWidth }));
+    expect('phone: the Home search box reads "Search the site" on one line', phoneText === 'Search the site' && lineBox.h < 24 && lineBox.sw <= lineBox.cw, `${phoneText} ${JSON.stringify(lineBox)}`);
+    expect('phone: its accessible name is still the full sentence', /^Search \d+ benchmarks, \d+ blueprints and \d+ save files$/.test(await phone.locator('[data-home-search]').getAttribute('aria-label')));
     const over2 = await phone.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect('phone: no sideways scroll with the dialog closed', over2 <= 0);
   },

@@ -99,7 +99,7 @@ function SearchBody({ onClose }: { onClose: () => void }) {
   const uid = useId();
   const listId = `${uid}-results`;
   const [query, setQuery] = useState('');
-  const [active, setActive] = useState(-1);
+  const [active, setActive] = useState(0);
   const [tree, setTree] = useState<SaveTree | null>(loadedSaveTree);
   const [failed, setFailed] = useState(false);
 
@@ -205,7 +205,7 @@ function SearchBody({ onClose }: { onClose: () => void }) {
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
-            setActive(-1);
+            setActive(0); // the best match is active; with no results there is no row to point at
           }}
           onKeyDown={onKeyDown}
           placeholder="Search benchmarks, blueprints, tools, posts and save files"

@@ -112,6 +112,8 @@ const alsoHere: Array<{ title: string; subtitle: string; to: string }> = [
   { title: 'About', subtitle: 'Who runs this and how to get in touch', to: '/about' },
 ];
 
+const fullSearchText = `Search ${content.benchmarks.length} benchmarks, ${activeBlueprints} blueprints and ${content.saveStats.count} save files`;
+
 export function Home() {
   const { open: openSearch } = useSearch();
   return (
@@ -145,6 +147,7 @@ export function Home() {
       <ButtonBase
         data-home-search
         onClick={openSearch}
+        aria-label={fullSearchText}
         sx={{
           display: 'flex',
           justifyContent: 'flex-start',
@@ -160,12 +163,14 @@ export function Home() {
         }}
       >
         <SearchIcon fontSize="small" />
+        <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' }, whiteSpace: 'nowrap' }}>
+          Search the site
+        </Box>
         <Box
           component="span"
-          // On a phone the sentence wraps to two lines inside the 44px box rather than cutting off.
-          sx={{ minWidth: 0, whiteSpace: 'normal', textWrap: 'balance', fontSize: { xs: 13, sm: 14 }, lineHeight: { xs: 1.3, sm: 'inherit' } }}
+          sx={{ display: { xs: 'none', sm: 'inline' }, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
         >
-          Search {content.benchmarks.length} benchmarks, {activeBlueprints} blueprints and {content.saveStats.count} save files
+          {fullSearchText}
         </Box>
       </ButtonBase>
 

@@ -6,6 +6,7 @@ import blueprints from './generated/blueprints.json';
 import type { BlueprintIndex, ContentIndex } from './content';
 import { blogPosts } from './blog/registry';
 import { toolSections, tutorials } from './data/tools';
+import { benchmarkMatchText } from './benchmarkFilters';
 import { saveFolderRoute, searchSaves, type SaveTree } from './saves';
 
 export type SearchKind = 'benchmark' | 'blueprint' | 'tool' | 'post' | 'save';
@@ -56,16 +57,7 @@ export function staticEntries(): SearchEntry[] {
       title: b.title,
       detail: b.question ?? b.finding ?? b.summary,
       to: `/benchmarks/${b.slug}`,
-      haystack: hay(
-        b.title,
-        b.question,
-        b.finding,
-        b.summary,
-        b.topic ? topicLabels.get(b.topic) : undefined,
-        b.factorioVersion,
-        b.platform,
-        b.cpu,
-      ),
+      haystack: benchmarkMatchText(b, b.topic ? topicLabels.get(b.topic) : undefined),
     });
   }
 
