@@ -58,7 +58,7 @@ async function fetchLatestVideo(): Promise<LatestVideo | null> {
   };
 }
 
-export function LatestVideo() {
+export function LatestVideo({ compact = false }: { compact?: boolean }) {
   const [video, setVideo] = useState<LatestVideo | null>(null);
   const [loading, setLoading] = useState(true);
   const [playing, setPlaying] = useState(false);
@@ -82,7 +82,7 @@ export function LatestVideo() {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, ...(compact && { pt: 1.25 }) }}>
         <CircularProgress size={18} />
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
           Loading latest video…
@@ -93,7 +93,7 @@ export function LatestVideo() {
 
   if (!video) {
     return (
-      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+      <Typography variant="body2" sx={{ color: 'text.secondary', ...(compact && { pt: 1.25 }) }}>
         Couldn't load the latest video.{' '}
         <Link
           href="https://www.youtube.com/@abucnasty"
@@ -108,6 +108,76 @@ export function LatestVideo() {
   }
 
   const thumbUrl = `https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`;
+
+  if (compact) {
+    // The thumbnail and the title are one link to the video; no inline player.
+    return (
+      <Link
+        href={video.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        underline="none"
+        color="text.primary"
+        sx={{
+          pt: 1.25,
+          display: 'flex',
+          gap: 1.5,
+          alignItems: 'flex-start',
+          '&:hover .video-title': { textDecoration: 'underline' },
+        }}
+      >
+        <Box
+          sx={{
+            position: 'relative',
+            width: { xs: 140, sm: 160 },
+            flexShrink: 0,
+            aspectRatio: '16 / 9',
+            backgroundColor: 'common.black',
+            overflow: 'hidden',
+          }}
+        >
+          <Box
+            component="img"
+            src={thumbUrl}
+            alt=""
+            loading="lazy"
+            sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              m: 'auto',
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'primary.main',
+              color: 'common.black',
+            }}
+          >
+            <PlayArrowIcon sx={{ fontSize: 22 }} />
+          </Box>
+        </Box>
+        <Typography
+          className="video-title"
+          variant="body2"
+          sx={{
+            fontWeight: 600,
+            minWidth: 0,
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}
+        >
+          {video.title}
+        </Typography>
+      </Link>
+    );
+  }
 
   return (
     <Stack
