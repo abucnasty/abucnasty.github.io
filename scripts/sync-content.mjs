@@ -257,7 +257,7 @@ function validateTopics(manifest) {
 
 /**
  * Read the question and finding off a README and lift their sections out of it.
- * The question may be a list item and is cut after its last "?"; a finding is never a list item.
+ * The question is cut after its last "?"; either may be the first item of a flat list.
  * The question section is lifted only when it has a plain-text first paragraph, and the
  * answer section only along with it; a "Conclusion" gives a finding but is never lifted.
  *
@@ -277,7 +277,7 @@ function liftQuestionAndAnswer(markdown) {
     : '';
   // Too short to say anything on its own ("Yes") counts as no finding.
   const findingOf = (section) => {
-    const text = section ? plainFirstParagraph(section.body) : '';
+    const text = section ? plainFirstParagraph(section.body, { allowList: true }) : '';
     return text.length >= MIN_FINDING_LENGTH ? text : '';
   };
   const finding = findingOf(answerSection) || findingOf(conclusionSection);

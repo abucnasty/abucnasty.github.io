@@ -142,6 +142,12 @@ function blockText(block, allowList) {
   let lines = block;
   if (LIST_ITEM_RE.test(block[0])) {
     if (!allowList) return null;
+    // A first item with nested items under it is a group label, not a statement.
+    const indent = (l) => l.match(/^[ \t]*/)[0].replace(/\t/g, '    ').length;
+    const following = block.findIndex((l, i) => i > 0 && LIST_ITEM_RE.test(l));
+    if (following > 0 && indent(block[following]) > indent(block[0])) {
+      return null;
+    }
     const next = block.findIndex((l, i) => i > 0 && LIST_ITEM_RE.test(l));
     lines = next > 0 ? block.slice(0, next) : block;
     lines = [lines[0].replace(LIST_ITEM_RE, ''), ...lines.slice(1)];
@@ -158,7 +164,8 @@ function blockText(block, allowList) {
  * with prose.
  *
  * - A table, an image, an HTML block, a heading or a fenced code block gives ''.
- * - A list gives '' unless `allowList`, then its first item.
+ * - A list gives '' unless `allowList`, then its first item, unless that item has nested
+ *   items under it (a group label).
  * - Prose that runs straight into a list keeps only the lines before it.
  * - Text ending in a colon is a lead-in, not a statement: ''.
  * - Text under 30 characters is joined to the next block when that is prose too.
