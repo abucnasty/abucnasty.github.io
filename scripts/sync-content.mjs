@@ -54,8 +54,8 @@ const SOURCE_REPO_PATH =
 /** @typedef {{ id: string, label: string }} Topic */
 /** @typedef {{ sourceRepo: { owner: string, repo: string, branch: string }, lfsWorkerUrl?: string, blueprintsSource: string, topics?: Topic[], benchmarks: BenchmarkEntry[] }} Manifest */
 
-/** Shortest "Conclusion" paragraph worth showing as a one-line finding. */
-const MIN_FINDING_LENGTH = 30;
+/** Shortest text worth showing as a one-line finding. */
+const MIN_FINDING_LENGTH = 12;
 
 async function main() {
   const manifest = /** @type {Manifest} */ (
@@ -257,6 +257,7 @@ function validateTopics(manifest) {
 
 /**
  * Read the question and finding off a README and lift their sections out of it.
+ * The question may be a list item and is cut after its last "?"; a finding is never a list item.
  * The question section is lifted only when it has a plain-text first paragraph, and the
  * answer section only along with it; a "Conclusion" gives a finding but is never lifted.
  *
@@ -271,12 +272,15 @@ function liftQuestionAndAnswer(markdown) {
   const answerSection = findSection(markdown, answerNames);
   const conclusionSection = findSection(markdown, ['Conclusion', 'Conclusions']);
 
-  const question = questionSection ? plainFirstParagraph(questionSection.body) : '';
-  let finding = answerSection ? plainFirstParagraph(answerSection.body) : '';
-  if (!finding && conclusionSection) {
-    const fromConclusion = plainFirstParagraph(conclusionSection.body);
-    if (fromConclusion.length >= MIN_FINDING_LENGTH) finding = fromConclusion;
-  }
+  const question = questionSection
+    ? plainFirstParagraph(questionSection.body, { allowList: true, trimToQuestion: true })
+    : '';
+  // Too short to say anything on its own ("Yes") counts as no finding.
+  const findingOf = (section) => {
+    const text = section ? plainFirstParagraph(section.body) : '';
+    return text.length >= MIN_FINDING_LENGTH ? text : '';
+  };
+  const finding = findingOf(answerSection) || findingOf(conclusionSection);
 
   let readme = markdown;
   let questionBody;

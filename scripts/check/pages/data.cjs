@@ -47,9 +47,21 @@ module.exports = {
 
     const withAnswer = list.filter((b) => fs.existsSync(file(b, 'answer.md')));
     expect(
-      'where answer.md exists, question.md exists and finding is set',
-      withAnswer.every((b) => fs.existsSync(file(b, 'question.md')) && Boolean(b.finding)),
-      withAnswer.filter((b) => !fs.existsSync(file(b, 'question.md')) || !b.finding).map((b) => b.slug).join(','),
+      'where answer.md exists, question.md exists',
+      withAnswer.every((b) => fs.existsSync(file(b, 'question.md'))),
+      withAnswer.filter((b) => !fs.existsSync(file(b, 'question.md'))).map((b) => b.slug).join(','),
+    );
+
+    const findings = list.filter((b) => b.finding !== undefined);
+    expect(
+      'no finding ends with a colon',
+      findings.every((b) => !b.finding.endsWith(':')),
+      findings.filter((b) => b.finding.endsWith(':')).map((b) => b.slug).join(','),
+    );
+    expect(
+      'every finding is at least 12 characters',
+      findings.every((b) => b.finding.length >= 12),
+      findings.filter((b) => b.finding.length < 12).map((b) => `${b.slug}: ${b.finding}`).join(' | '),
     );
 
     const leftOver = [];

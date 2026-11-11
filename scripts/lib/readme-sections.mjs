@@ -81,44 +81,12 @@ export function removeSection(markdown, section) {
 
 const LIST_ITEM_RE = /^[ \t]*(?:[-*+]|\d+[.)])(?:[ \t]+|$)/;
 
-/**
- * First paragraph of a section body as plain text, or '' when the body does not start
- * with prose (a table, an image, an HTML block, a heading or a fenced code block).
- *
- * @param {string} body
- * @param {number} [maxLength=280]
- * @returns {string}
- */
-export function plainFirstParagraph(body, maxLength = 280) {
-  const all = body.replace(/\r/g, '').split('\n');
-  while (all.length && all[0].trim() === '') all.shift();
-  let block = [];
-  for (const line of all) {
-    if (line.trim() === '') break;
-    block.push(line);
-  }
-  if (block.length === 0) return '';
+/** A text shorter than this is joined with the paragraph after it. */
+const SHORT_TEXT = 30;
 
-  const first = block[0].trim();
-  if (
-    first.startsWith('|') ||
-    first.startsWith('![') ||
-    /^<[a-z/!]/i.test(first) ||
-    first.startsWith('#') ||
-    /^(`{3,}|~{3,})/.test(first)
-  ) {
-    return '';
-  }
-
-  if (LIST_ITEM_RE.test(block[0])) {
-    // First item only: up to the next list marker.
-    const next = block.findIndex((l, i) => i > 0 && LIST_ITEM_RE.test(l));
-    if (next > 0) block = block.slice(0, next);
-    block[0] = block[0].replace(LIST_ITEM_RE, '');
-  }
-
-  let text = block.join(' ');
-  text = text
+/** Markdown of one inline run to plain text. */
+function toPlain(text) {
+  return text
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '') // inline images
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // [text](url)
     .replace(/\[([^\]]*)\]\[[^\]]*\]/g, '$1') // [text][ref]
@@ -129,8 +97,92 @@ export function plainFirstParagraph(body, maxLength = 280) {
     .replace(/(^|[\s(])_([^_]+)_(?=[\s).,;:!?]|$)/g, '$1$2')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/**
+ * Blocks (runs of non-blank lines) of a body, leading blank lines skipped.
+ * @param {string} body
+ * @returns {string[][]}
+ */
+function toBlocks(body) {
+  const blocks = [];
+  let current = [];
+  for (const line of body.replace(/\r/g, '').split('\n')) {
+    if (line.trim() === '') {
+      if (current.length) blocks.push(current);
+      current = [];
+    } else {
+      current.push(line);
+    }
+  }
+  if (current.length) blocks.push(current);
+  return blocks;
+}
+
+/**
+ * Plain text of one block, or null when the block is not prose: a table, an image, an HTML
+ * block, a heading or a fenced code block (always), and a list (unless `allowList`, which
+ * gives its first item). Prose that runs straight into a list keeps the lines before it.
+ *
+ * @param {string[]} block
+ * @param {boolean} allowList
+ * @returns {string | null}
+ */
+function blockText(block, allowList) {
+  const first = block[0].trim();
+  if (
+    first.startsWith('|') ||
+    first.startsWith('![') ||
+    /^<[a-z/!]/i.test(first) ||
+    first.startsWith('#') ||
+    /^(`{3,}|~{3,})/.test(first)
+  ) {
+    return null;
+  }
+  let lines = block;
+  if (LIST_ITEM_RE.test(block[0])) {
+    if (!allowList) return null;
+    const next = block.findIndex((l, i) => i > 0 && LIST_ITEM_RE.test(l));
+    lines = next > 0 ? block.slice(0, next) : block;
+    lines = [lines[0].replace(LIST_ITEM_RE, ''), ...lines.slice(1)];
+  } else {
+    const next = block.findIndex((l, i) => i > 0 && LIST_ITEM_RE.test(l));
+    if (next > 0) lines = block.slice(0, next);
+  }
+  const text = toPlain(lines.join(' '));
+  return text || null;
+}
+
+/**
+ * First paragraph of a section body as plain text, or '' when the body does not start
+ * with prose.
+ *
+ * - A table, an image, an HTML block, a heading or a fenced code block gives ''.
+ * - A list gives '' unless `allowList`, then its first item.
+ * - Prose that runs straight into a list keeps only the lines before it.
+ * - Text ending in a colon is a lead-in, not a statement: ''.
+ * - Text under 30 characters is joined to the next block when that is prose too.
+ * - With `trimToQuestion`, text containing a `?` is cut after its last one.
+ * - Emphasis, code ticks, HTML tags and link targets are removed, whitespace is collapsed,
+ *   the first letter is upper-cased and text over `maxLength` is cut at a space and ends in `…`.
+ *
+ * @param {string} body
+ * @param {{ maxLength?: number, allowList?: boolean, trimToQuestion?: boolean }} [options]
+ * @returns {string}
+ */
+export function plainFirstParagraph(body, { maxLength = 280, allowList = false, trimToQuestion = false } = {}) {
+  const blocks = toBlocks(body);
+  if (blocks.length === 0) return '';
+  let text = blockText(blocks[0], allowList);
   if (!text) return '';
+  if (text.length < SHORT_TEXT && blocks[1]) {
+    const more = blockText(blocks[1], false);
+    if (more) text = `${/[.!?…]$/.test(text) ? text : text + '.'} ${more}`;
+  }
+  if (text.endsWith(':')) return '';
   text = text[0].toUpperCase() + text.slice(1);
+
+  if (trimToQuestion && text.includes('?')) text = text.slice(0, text.lastIndexOf('?') + 1);
 
   if (text.length > maxLength) {
     const cut = text.lastIndexOf(' ', maxLength);

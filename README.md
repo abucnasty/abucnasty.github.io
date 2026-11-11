@@ -109,9 +109,9 @@ What sync does for each entry:
 - Rewrites relative links in the README (`[text](./file)`) to GitHub: a folder links to its `tree` page, a file tracked by git-lfs links to its download on the LFS worker (decided from the git object at `HEAD`, like saves), anything else to the raw file
 - Skips `.zip` files in the copy; their entries in the index link to the download on the LFS worker (`lfsWorkerUrl` in the manifest) so saves remain downloadable without bundling them
 - Extracts `**Factorio Version:**`, `**Platform:**` and `**CPU:**` from the README header and stores them on the index entry
-- Reads the README's "The Question" / "Question" section into `question` and its "The Answer" / "Answer" section into `finding`, both as one line of plain text ([scripts/lib/readme-sections.mjs](scripts/lib/readme-sections.mjs)). With no answer, `finding` comes from the first paragraph of a "Conclusion" section when that is at least 30 characters. A field with no value is left out
+- Reads the README's "The Question" / "Question" section into `question` and its "The Answer" / "Answer" section into `finding`, both as one line of plain text ([scripts/lib/readme-sections.mjs](scripts/lib/readme-sections.mjs)). The question may be a list item and is cut after its last `?`. A finding is never a list item, never ends in a colon, and is left out when under 12 characters; a text under 30 characters is joined to the paragraph after it. With no usable answer, `finding` comes from the first paragraph of a "Conclusion" section. A field with no value is left out
 - When there is a question, lifts its section out of the generated `README.md` into `question.md` next to it, and the answer section into `answer.md` (a "Conclusion" is never lifted). Links and images in all three files are rewritten the same way
-- Logs a coverage line, e.g. `✓ topics 0/43 · questions 14/43 · findings 25/43 · cpu 6/43`
+- Logs a coverage line, e.g. `✓ topics 0/43 · questions 14/43 · findings 18/43 · cpu 6/43`
 
 ### Topics
 
