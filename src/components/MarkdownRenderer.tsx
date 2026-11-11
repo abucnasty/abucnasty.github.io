@@ -1,3 +1,4 @@
+import type { SxProps, Theme } from '@mui/material';
 import { Box, Link, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -7,29 +8,32 @@ import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 
 interface MarkdownRendererProps {
   source: string;
+  /** Merged after the root styles, so a caller can override font size and margins. */
+  sx?: SxProps<Theme>;
 }
 
 const isExternal = (href: string | undefined) =>
   !!href && /^https?:\/\//i.test(href);
 
-export function MarkdownRenderer({ source }: MarkdownRendererProps) {
+export function MarkdownRenderer({ source, sx }: MarkdownRendererProps) {
   return (
     <Box
-      sx={{
-        // Long URLs and inline code would otherwise push the page sideways on phones.
-        overflowWrap: 'anywhere',
-        '& pre, & table': { overflowWrap: 'normal' },
-        '& h1, & h2, & h3, & h4': { color: 'text.primary', mt: 4, mb: 2 },
-        '& h1': { fontSize: '2rem', borderBottom: '2px solid', borderColor: 'primary.main', pb: 1 },
-        '& h2': { fontSize: '1.5rem' },
-        '& h3': { fontSize: '1.25rem' },
-        '& p': { lineHeight: 1.7, my: 2 },
-        '& code': {
-          backgroundColor: 'background.paper',
-          px: 0.75,
-          py: 0.25,
-          fontSize: '0.9em',
-          fontFamily: 'monospace',
+      sx={[
+        {
+          // Long URLs and inline code would otherwise push the page sideways on phones.
+          overflowWrap: 'anywhere',
+          '& pre, & table': { overflowWrap: 'normal' },
+          '& h1, & h2, & h3, & h4': { color: 'text.primary', mt: 4, mb: 2 },
+          '& h1': { fontSize: '2rem', borderBottom: '2px solid', borderColor: 'primary.main', pb: 1 },
+          '& h2': { fontSize: '1.5rem' },
+          '& h3': { fontSize: '1.25rem' },
+          '& p': { lineHeight: 1.7, my: 2 },
+          '& code': {
+            backgroundColor: 'background.paper',
+            px: 0.75,
+            py: 0.25,
+            fontSize: '0.9em',
+            fontFamily: 'monospace',
         },
         '& pre': {
           backgroundColor: 'background.paper',
@@ -50,7 +54,9 @@ export function MarkdownRenderer({ source }: MarkdownRendererProps) {
           my: 2,
         },
         '& hr': { borderColor: 'divider', my: 4 },
-      }}
+        },
+        ...(Array.isArray(sx) ? sx : [sx]),
+      ]}
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
