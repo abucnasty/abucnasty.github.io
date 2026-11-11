@@ -27,11 +27,11 @@ const chipSx = { height: 20, fontSize: 12 };
 
 function ChartMarker() {
   return (
-    <Tooltip title="Interactive charts">
+    <Tooltip title="Interactive metrics">
       <Box
         component="span"
         role="img"
-        aria-label="Interactive charts"
+        aria-label="Interactive metrics"
         sx={{ display: 'inline-flex', color: 'primary.main' }}
       >
         <BarChartIcon sx={{ fontSize: 16 }} />
@@ -51,6 +51,11 @@ function SaveMarker({ b }: { b: BenchmarkEntry }) {
         display: 'inline-flex',
         alignItems: 'center',
         gap: 0.5,
+        // 24 px tap target on phones. The negative vertical margin keeps the row no taller than
+        // it was: the 20 px chips beside the link set the line height, as before.
+        minHeight: { xs: 24 },
+        minWidth: { xs: 24 },
+        my: { xs: -0.5 },
         color: 'text.secondary',
         fontSize: 13,
         '&:hover': { color: 'primary.main' },

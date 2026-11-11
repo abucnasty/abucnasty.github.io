@@ -14,8 +14,13 @@ module.exports = {
         return {
           href: title ? title.getAttribute('href') : null,
           height: tr.getBoundingClientRect().height,
-          charts: [...tr.querySelectorAll('[aria-label="Interactive charts"]')].filter(visible).length,
-          saves: saves.map((a) => ({ href: a.getAttribute('href'), label: a.getAttribute('aria-label'), text: a.textContent.trim() })),
+          charts: [...tr.querySelectorAll('[aria-label="Interactive metrics"]')].filter(visible).length,
+          saves: saves.map((a) => ({
+            href: a.getAttribute('href'),
+            label: a.getAttribute('aria-label'),
+            text: a.textContent.trim(),
+            height: a.getBoundingClientRect().height,
+          })),
         };
       });
     });
@@ -68,6 +73,10 @@ module.exports = {
     const phoneRows = await readRows(phone);
     const shortest = Math.min(...phoneRows.map((r) => r.height));
     expect('phone: no row is shorter than 44 px', phoneRows.length > 0 && shortest >= 44, `shortest ${shortest} px`);
+    const saveLinks = phoneRows.flatMap((r) => r.saves);
+    const shortSaves = saveLinks.filter((s) => s.height < 24).map((s) => Math.round(s.height));
+    expect(`phone: every save link is at least 24 px tall (${saveLinks.length} links)`,
+      saveLinks.length > 0 && shortSaves.length === 0, `shorter: ${shortSaves.join(',')}`);
     markers(phoneRows, 'phone');
   },
 };

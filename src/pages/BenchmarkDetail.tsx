@@ -117,7 +117,7 @@ export function BenchmarkDetail() {
                 variant="outlined"
                 clickable
                 onClick={() => setTab('charts')}
-                label="Interactive charts"
+                label="Interactive metrics"
               />
             )}
             {benchmark.tags?.map((t) => (

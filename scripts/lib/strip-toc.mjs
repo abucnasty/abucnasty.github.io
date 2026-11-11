@@ -10,6 +10,10 @@ export function stripOwnToc(markdown) {
   const lines = markdown.split('\n');
   const headingRe = /^ {0,3}(#{1,4})[ \t]+(.*?)[ \t]*#*[ \t]*$/;
   const anyHeadingRe = /^ {0,3}#{1,6}(?:[ \t]|$)/;
+  // A single-line HTML heading, e.g. <h2>Table Of Contents</h2>, counts as an opening heading
+  // and, as any other line of this form, as a heading that ends the section.
+  const htmlTocRe = /^ {0,3}<h[1-4](?:\s[^>]*)?>\s*table of contents\s*<\/h[1-4]>\s*$/i;
+  const htmlHeadingRe = /^ {0,3}<h[1-6](?:\s[^>]*)?>/i;
   const listItemRe = /^[ \t]*(?:[-*+]|\d+[.)])(?:[ \t]|$)/;
   const fenceRe = /^ {0,3}(`{3,}|~{3,})/;
 
@@ -25,7 +29,7 @@ export function stripOwnToc(markdown) {
     }
     if (fence) continue;
     const m = line.match(headingRe);
-    if (m && m[2].trim().toLowerCase() === 'table of contents') {
+    if ((m && m[2].trim().toLowerCase() === 'table of contents') || htmlTocRe.test(line)) {
       start = i;
       break;
     }
@@ -33,7 +37,7 @@ export function stripOwnToc(markdown) {
   if (start < 0) return markdown;
 
   let end = start + 1;
-  while (end < lines.length && !anyHeadingRe.test(lines[end])) {
+  while (end < lines.length && !anyHeadingRe.test(lines[end]) && !htmlHeadingRe.test(lines[end])) {
     const line = lines[end].replace(/\r$/, '');
     if (line.trim() !== '' && !listItemRe.test(line)) return markdown;
     end++;

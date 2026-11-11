@@ -35,7 +35,16 @@ function LinkButton({ link, toolName }: { link: ToolLink; toolName: string }) {
       size="small"
       aria-label={`${link.label}: ${toolName}`}
       startIcon={linkIcon[link.kind]}
-      sx={{ minWidth: { xs: layout.touchTarget, sm: 'auto' }, minHeight: { xs: layout.touchTarget, sm: 'auto' } }}
+      sx={{
+        minWidth: { xs: layout.touchTarget, sm: 'auto' },
+        minHeight: { xs: layout.touchTarget, sm: 'auto' },
+        // On phones the icon is the whole label: drop the label gap so it sits centred.
+        // From sm up these are MUI's own small-button start icon margins.
+        '& .MuiButton-startIcon': {
+          ml: { xs: 0, sm: '-2px' },
+          mr: { xs: 0, sm: '8px' },
+        },
+      }}
     >
       <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
         {link.label}

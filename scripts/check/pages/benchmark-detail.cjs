@@ -17,7 +17,9 @@ module.exports = {
           .map((d) => path.join(generatedDir, d, 'README.md'))
           .filter((f) => fs.existsSync(f))
       : [];
-    const withToc = readmes.filter((f) => /^ {0,3}#{1,4}[ \t]+table of contents[ \t]*#*[ \t]*$/im.test(fs.readFileSync(f, 'utf8')));
+    const tocHeading =
+      /^ {0,3}(?:#{1,4}[ \t]+table of contents[ \t]*#*|<h[1-4](?:\s[^>]*)?>\s*table of contents\s*<\/h[1-4]>)[ \t]*$/im;
+    const withToc = readmes.filter((f) => tocHeading.test(fs.readFileSync(f, 'utf8')));
     expect(
       'no generated README has a "Table of Contents" heading',
       readmes.length > 0 && withToc.length === 0,
@@ -105,9 +107,9 @@ module.exports = {
         }
 
         if (hasCharts && viewport === 'desktop') {
-          await page.getByRole('button', { name: 'Interactive charts' }).click();
+          await page.getByRole('button', { name: 'Interactive metrics' }).click();
           const selected = await page.locator('[role="tab"][aria-selected="true"]').first().textContent();
-          expect(`${label}: "Interactive charts" chip shows the charts tab`, selected && selected.trim() === 'Interactive metrics', selected);
+          expect(`${label}: "Interactive metrics" chip shows the charts tab`, selected && selected.trim() === 'Interactive metrics', selected);
           await page.waitForSelector('main canvas, main svg.recharts-surface, main .recharts-wrapper, main .echarts-for-react', { timeout: 15000 }).catch(() => {});
           expect(
             `${label}: charts render`,
@@ -126,11 +128,17 @@ module.exports = {
       const tocLinks = (await page.locator('main nav a').allTextContents()).map((t) => t.trim());
       expect(`${b.slug}: sidebar "On this page" lists headings`, tocLinks.length > 0, tocLinks.join(','));
       expect(`${b.slug}: sidebar list has no "Table of Contents"`, !tocLinks.some((t) => /table of contents/i.test(t)), tocLinks.join(','));
-      // A sidebar link scrolls to its heading. Pick the third link whose target exists
-      // (TableOfContents slugs headings with "/" differently from rehype-slug: reported separately).
+      // Every sidebar link must point at an id that exists in the rendered document.
       const hrefs = await page.locator('main nav a').evaluateAll((els) => els.map((e) => e.getAttribute('href').slice(1)));
-      const ids = await page.evaluate((hs) => hs.filter((h) => document.getElementById(h)), hrefs);
-      const id = ids[Math.min(2, ids.length - 1)];
+      const found = await page.evaluate((hs) => hs.map((h) => document.getElementById(h) !== null), hrefs);
+      const missing = hrefs.filter((_, i) => !found[i]);
+      expect(
+        `${b.slug}: every "On this page" link targets an id in the document`,
+        hrefs.length > 0 && missing.length === 0,
+        `missing: ${missing.join(', ')}`,
+      );
+      // A sidebar link scrolls to its heading.
+      const id = hrefs[Math.min(2, hrefs.length - 1)];
       await page.locator(`main nav a[href="#${id}"]`).click();
       await page.waitForTimeout(1200);
       const top = await page.evaluate((i) => document.getElementById(i)?.getBoundingClientRect().top ?? null, id);

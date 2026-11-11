@@ -7,13 +7,14 @@ interface Heading {
   level: number;
 }
 
-// Mirrors rehype-slug's github-slugger algorithm
+// Mirrors rehype-slug's github-slugger algorithm: each space becomes a hyphen on its own,
+// so "Cars / Tanks" gives "cars--tanks", as the rendered heading id does.
 function slugify(text: string): string {
   return text
     .toLowerCase()
     .replace(/[^\w\s-]/g, '')
     .trim()
-    .replace(/\s+/g, '-');
+    .replace(/ /g, '-');
 }
 
 function parseHeadings(markdown: string): Heading[] {
@@ -29,9 +30,11 @@ function parseHeadings(markdown: string): Heading[] {
     const m = line.match(/^(#{1,4})\s+(.+)$/);
     if (!m) continue;
     const level = m[1].length;
+    // Links render as their label; the id is built from that, keeping "_" as rehype-slug does
+    const linked = m[2].replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').trim();
     // Strip inline markdown from display text
-    const text = m[2].replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/[*_`]/g, '').trim();
-    const base = slugify(text);
+    const text = linked.replace(/[*_`]/g, '').trim();
+    const base = slugify(linked);
     const count = seen[base] ?? 0;
     seen[base] = count + 1;
     const id = count === 0 ? base : `${base}-${count}`;

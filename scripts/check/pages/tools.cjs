@@ -54,6 +54,19 @@ module.exports = {
         const small = buttons.filter((b) => b.w < 44 || b.h < 44);
         expect(`phone: every link button is at least 44 px in both directions (${buttons.length} buttons)`,
           buttons.length > 0 && small.length === 0, JSON.stringify(small));
+
+        const offCentre = await page.$$eval('main a.MuiButton-root[target="_blank"]', (els) =>
+          els.map((e) => {
+            const icon = e.querySelector('.MuiButton-startIcon');
+            if (!icon) return { label: e.getAttribute('aria-label'), dx: null };
+            const b = e.getBoundingClientRect();
+            const i = icon.getBoundingClientRect();
+            return { label: e.getAttribute('aria-label'), dx: +(i.left + i.width / 2 - (b.left + b.width / 2)).toFixed(2) };
+          }),
+        );
+        const bad = offCentre.filter((o) => o.dx === null || Math.abs(o.dx) > 1);
+        expect(`phone: every link icon is centred in its button (${offCentre.length} buttons)`,
+          offCentre.length > 0 && bad.length === 0, JSON.stringify(bad));
       }
     }
   },
