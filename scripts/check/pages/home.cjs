@@ -89,5 +89,20 @@ module.exports = {
         expect('desktop: Save files row shows the save count', saves.includes(`${data.index.saveStats.count} saves`), saves.replace(/\n/g, ' | '));
       }
     }
+
+    // Tablet widths keep the natural order: avatar, text, social links at the right.
+    const tablet = await open('/', 'desktop');
+    for (const width of [768, 900]) {
+      await tablet.setViewportSize({ width, height: 800 });
+      const m = await tablet.evaluate(() => {
+        const strip = document.querySelector('[data-home-strip]');
+        const [, text, links] = strip.children;
+        return { h: Math.round(strip.getBoundingClientRect().height), text: Math.round(text.getBoundingClientRect().width), textLeft: text.getBoundingClientRect().left, linksLeft: links.getBoundingClientRect().left };
+      });
+      expect(`${width}px: the text block is left of the social links`, m.textLeft < m.linksLeft, JSON.stringify(m));
+      expect(`${width}px: the identity strip is at most 90px tall`, m.h <= 90, JSON.stringify(m));
+      expect(`${width}px: the strip's text block is at least 280px wide`, m.text >= 280, JSON.stringify(m));
+      if (width === 768) await shot(tablet, 'home-768');
+    }
   },
 };

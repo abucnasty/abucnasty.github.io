@@ -1,4 +1,5 @@
-import { Box, Chip, Stack, Typography } from '@mui/material';
+import { Box, ButtonBase, Chip, Stack, Typography } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
 import { Link as RouterLink } from 'react-router-dom';
 import index from '../generated/index.json';
 import blueprints from '../generated/blueprints.json';
@@ -11,6 +12,7 @@ import { LatestVideo } from '../components/LatestVideo';
 import { BrandAvatar } from '../components/BrandAvatar';
 import { SectionHeader } from '../components/SectionHeader';
 import { ListRow, RowGroup } from '../components/ListRow';
+import { useSearch } from '../components/SearchDialog';
 
 const content = index as ContentIndex;
 const blueprintIndex = blueprints as BlueprintIndex;
@@ -110,14 +112,18 @@ const alsoHere: Array<{ title: string; subtitle: string; to: string }> = [
   { title: 'About', subtitle: 'Who runs this and how to get in touch', to: '/about' },
 ];
 
+const fullSearchText = `Search ${content.benchmarks.length} benchmarks, ${activeBlueprints} blueprints and ${content.saveStats.count} save files`;
+
 export function Home() {
+  const { open: openSearch } = useSearch();
   return (
     <Stack spacing={layout.sectionGap}>
       <Box
         data-home-strip
         sx={{
           backgroundColor: 'background.paper',
-          p: 2,
+          px: 2,
+          py: { xs: 2, sm: 1.5 },
           display: 'flex',
           alignItems: 'center',
           gap: 2,
@@ -125,7 +131,7 @@ export function Home() {
         }}
       >
         <BrandAvatar sx={{ width: 44, height: 44 }} />
-        <Box sx={{ flex: '1 1 280px', minWidth: 0, order: { xs: 2, md: 0 } }}>
+        <Box sx={{ flex: '1 1 280px', minWidth: 0, order: { xs: 2, sm: 0 } }}>
           <Typography component="h1" sx={{ fontSize: 20, fontWeight: 700, lineHeight: 1.25 }}>
             Factorio benchmarks, blueprints, and tools.
           </Typography>
@@ -134,10 +140,40 @@ export function Home() {
           </Typography>
         </Box>
         {/* On phones the links sit beside the avatar so the strip stays short. */}
-        <Box sx={{ order: { xs: 1, md: 0 }, ml: { xs: 'auto', md: 0 } }}>
+        <Box sx={{ order: { xs: 1, sm: 0 }, ml: { xs: 'auto', sm: 0 } }}>
           <SocialLinks />
         </Box>
       </Box>
+
+      <ButtonBase
+        data-home-search
+        onClick={openSearch}
+        aria-label={fullSearchText}
+        sx={{
+          display: 'flex',
+          justifyContent: 'flex-start',
+          gap: 1.5,
+          width: '100%',
+          height: layout.touchTarget,
+          px: 2,
+          textAlign: 'left',
+          backgroundColor: 'background.paper',
+          color: 'text.secondary',
+          fontSize: 14,
+          '&:hover': { color: 'text.primary' },
+        }}
+      >
+        <SearchIcon fontSize="small" />
+        <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' }, whiteSpace: 'nowrap' }}>
+          Search the site
+        </Box>
+        <Box
+          component="span"
+          sx={{ display: { xs: 'none', sm: 'inline' }, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+        >
+          {fullSearchText}
+        </Box>
+      </ButtonBase>
 
       <Box
         sx={{

@@ -12,6 +12,7 @@ A read-only frontend over the benchmarks repo — a curated subset of its write-
 - **Home** — an intro strip, the latest benchmarks and posts (newest first, featured benchmarks below), a short "Also here" list linking to the other pages, and the latest video.
 - **Tools** — benchmarking tools, utilities and mods, plus tutorials, from `src/data/tools.ts`.
 - **Blog** — posts from `src/blog/`.
+- **Search** — a dialog reachable from every page (header button, `/`, Ctrl/Cmd+K, the box on Home) that finds benchmarks, blueprints, tools, posts and save files; the save index is only fetched once something is typed.
 - **About** — who runs the site and how to get in touch.
 
 The site itself contains **no benchmark content in source control** beyond the curation manifest. A sync script at build time reads the local `factorio-benchmarks` clone (or a path set via `$FACTORIO_BENCHMARKS_PATH` in CI), copies / rewrites assets into `public/` and `src/generated/`, and produces typed JSON indexes the React app imports directly.
@@ -122,9 +123,10 @@ The manifest may list topics, in display order, and give each benchmark one:
   "topics": [{ "id": "inserters", "label": "Inserters & clocking" }],
   "benchmarks": [{ "slug": "…", "topic": "inserters" }]   // topic is optional
 }
+// optional per topic: "blueprintCategories": ["<category id from blueprints.json>"]
 ```
 
-A `topic` that is not the `id` of a listed topic, or two topics with the same `id`, fails the sync. A benchmark with no topic is allowed; sync warns with the count. `index.json` gets `topics: [{ id, label, count }]` in manifest order.
+A `topic` that is not the `id` of a listed topic, or two topics with the same `id`, fails the sync. A benchmark with no topic is allowed; sync warns with the count. A topic may optionally list `blueprintCategories` (not set for any topic today): ids of categories on the Blueprints page (the `id` values in `src/generated/blueprints.json`, e.g. `megabasing-space-science`). The benchmark page links to them under "Goes with this", and the Blueprints page links back to the topic's benchmarks. An id that is not a parsed category fails the sync, before any output is cleared. `index.json` gets `topics: [{ id, label, blueprintCategories, count }]` in manifest order (`blueprintCategories` is `[]` when the manifest has none, as it is for every topic today).
 
 Independently of the manifest, sync also writes `src/generated/saves.json` — see the next section.
 

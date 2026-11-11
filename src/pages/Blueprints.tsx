@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react';
-import { Box, Button, Chip, Stack, Switch, Typography } from '@mui/material';
+import { useEffect, useMemo, useState } from 'react';
+import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { Box, Button, Chip, Link, Stack, Switch, Typography } from '@mui/material';
 import blueprints from '../generated/blueprints.json';
-import type { BlueprintIndex } from '../content';
+import index from '../generated/index.json';
+import type { BlueprintIndex, ContentIndex } from '../content';
 import { BlueprintRow } from '../components/BlueprintRow';
 import { PageHeader } from '../components/PageHeader';
 import { SectionHeader } from '../components/SectionHeader';
@@ -9,9 +11,24 @@ import { RowGroup } from '../components/ListRow';
 import { layout } from '../layout';
 
 const data = blueprints as BlueprintIndex;
+const topics = (index as ContentIndex).topics;
 
 export function Blueprints() {
   const [showDeprecated, setShowDeprecated] = useState(false);
+  const { hash } = useLocation();
+
+  // The page renders after the browser's own hash scroll, so bring the category into view here.
+  // A hash that is not on the page (or a category hidden as deprecated) does nothing.
+  useEffect(() => {
+    if (!hash) return;
+    let id = hash.slice(1);
+    try {
+      id = decodeURIComponent(id);
+    } catch {
+      /* keep as written */
+    }
+    document.getElementById(id)?.scrollIntoView();
+  }, [hash]);
 
   const grouped = useMemo(() => {
     const byParent = new Map<string, typeof data.categories>();
@@ -63,7 +80,7 @@ export function Blueprints() {
                 : cat.entries.filter((e) => !e.deprecated);
               if (entries.length === 0) return null;
               return (
-                <Box key={cat.id}>
+                <Box key={cat.id} id={cat.id} sx={{ scrollMarginTop: `${layout.topBarHeight + 16}px` }}>
                   <Stack
                     direction="row"
                     spacing={1}
@@ -87,6 +104,21 @@ export function Blueprints() {
                       variant="outlined"
                       sx={{ height: { xs: 16, sm: 18 }, fontSize: { xs: 10, sm: 11 } }}
                     />
+                    <Box sx={{ flexGrow: 1 }} />
+                    {topics
+                      .filter((t) => t.blueprintCategories.includes(cat.id))
+                      .map((t) => (
+                        <Link
+                          key={t.id}
+                          component={RouterLink}
+                          to={`/benchmarks?topic=${encodeURIComponent(t.id)}`}
+                          underline="hover"
+                          color="primary.main"
+                          sx={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', minHeight: 24 }}
+                        >
+                          {t.label} benchmarks
+                        </Link>
+                      ))}
                   </Stack>
                   <RowGroup>
                     {entries.map((entry, i) => (

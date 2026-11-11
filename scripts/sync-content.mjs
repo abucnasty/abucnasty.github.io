@@ -51,7 +51,7 @@ const SOURCE_REPO_PATH =
 /** @typedef {{ name: string, scenarios: ChartScenario[], metrics?: string[] }} ChartGroup */
 /** @typedef {{ scenarios?: ChartScenario[], groups?: ChartGroup[], metrics?: string[], removeFirstTicks?: number, maxTicks?: number, window?: number }} ChartConfig */
 /** @typedef {{ slug: string, source: string, title: string, date?: string, summary?: string, tags?: string[], topic?: string, featured?: boolean, chart?: ChartConfig }} BenchmarkEntry */
-/** @typedef {{ id: string, label: string }} Topic */
+/** @typedef {{ id: string, label: string, blueprintCategories?: string[] }} Topic */
 /** @typedef {{ sourceRepo: { owner: string, repo: string, branch: string }, lfsWorkerUrl?: string, blueprintsSource: string, topics?: Topic[], benchmarks: BenchmarkEntry[] }} Manifest */
 
 /** Shortest text worth showing as a one-line finding. */
@@ -64,10 +64,13 @@ async function main() {
 
   validateTopics(manifest);
   await assertSourceExists();
+  // Parsed before any output is cleared, so an unknown category id fails the sync with the old output intact.
+  const blueprints = await readBlueprints(manifest.blueprintsSource, rawBaseOf(manifest));
+  validateBlueprintCategories(manifest, blueprints.categories);
   await resetOutputDirs();
 
   const githubBase = `https://github.com/${manifest.sourceRepo.owner}/${manifest.sourceRepo.repo}`;
-  const rawBase = `https://raw.githubusercontent.com/${manifest.sourceRepo.owner}/${manifest.sourceRepo.repo}/${manifest.sourceRepo.branch}`;
+  const rawBase = rawBaseOf(manifest);
   const treeBase = `${githubBase}/tree/${manifest.sourceRepo.branch}`;
   const lfsWorkerUrl = manifest.lfsWorkerUrl ?? null;
   const headReader = createHeadReader(SOURCE_REPO_PATH);
@@ -97,7 +100,7 @@ async function main() {
     log(`⚠ ${total - count('topic')} of ${total} benchmarks have no topic`);
   }
 
-  await syncBlueprints(manifest.blueprintsSource, rawBase);
+  await syncBlueprints(blueprints);
   log(`✓ blueprints.md`);
 
   await fs.mkdir(GENERATED_DIR, { recursive: true });
@@ -109,6 +112,7 @@ async function main() {
         topics: (manifest.topics ?? []).map((t) => ({
           id: t.id,
           label: t.label,
+          blueprintCategories: t.blueprintCategories ?? [],
           count: benchmarks.filter((b) => b.topic === t.id).length,
         })),
         benchmarks,
@@ -251,6 +255,23 @@ function validateTopics(manifest) {
   for (const entry of manifest.benchmarks) {
     if (entry.topic !== undefined && !ids.has(entry.topic)) {
       throw new Error(`manifest: benchmark "${entry.slug}" has topic "${entry.topic}", which is not in "topics"`);
+    }
+  }
+}
+
+/**
+ * Fail the sync when a topic names a blueprint category that the parsed blueprints do not have.
+ *
+ * @param {Manifest} manifest
+ * @param {Array<{ id: string }>} categories
+ */
+function validateBlueprintCategories(manifest, categories) {
+  const known = new Set(categories.map((c) => c.id));
+  for (const topic of manifest.topics ?? []) {
+    for (const id of topic.blueprintCategories ?? []) {
+      if (!known.has(id)) {
+        throw new Error(`manifest: topic "${topic.id}" lists blueprint category "${id}", which is not in the blueprints`);
+      }
     }
   }
 }
@@ -490,11 +511,18 @@ function rewriteMarkdownAssetPaths(markdown, slug, githubRawDir = null, linkRewr
   return out;
 }
 
+/** @param {Manifest} manifest */
+function rawBaseOf(manifest) {
+  return `https://raw.githubusercontent.com/${manifest.sourceRepo.owner}/${manifest.sourceRepo.repo}/${manifest.sourceRepo.branch}`;
+}
+
 /**
+ * Read and parse the blueprints README. Writes nothing, so it can run before the output folders are cleared.
+ *
  * @param {string} blueprintsSource
  * @param {string} rawBase
  */
-async function syncBlueprints(blueprintsSource, rawBase) {
+async function readBlueprints(blueprintsSource, rawBase) {
   const srcFile = path.join(SOURCE_REPO_PATH, blueprintsSource);
   await assertFile(srcFile, `blueprints source missing: ${blueprintsSource}`);
 
@@ -511,10 +539,12 @@ async function syncBlueprints(blueprintsSource, rawBase) {
       return `${pre}${rawBase}/${resolved}${post}`;
     },
   );
+  return { rewritten, categories: parseBlueprintsMarkdown(rewritten) };
+}
 
+/** @param {{ rewritten: string, categories: Array<any> }} blueprints */
+async function syncBlueprints({ rewritten, categories }) {
   await fs.mkdir(GENERATED_DIR, { recursive: true });
-
-  const categories = parseBlueprintsMarkdown(rewritten);
   await enrichFactoriobinPreviews(categories);
   await fs.writeFile(
     path.join(GENERATED_DIR, 'blueprints.json'),

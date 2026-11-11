@@ -45,9 +45,11 @@ function parseHeadings(markdown: string): Heading[] {
 
 interface TableOfContentsProps {
   markdown: string;
+  /** Tallest the list gets before it scrolls: px or any CSS length. Default 360. */
+  maxHeight?: number | string;
 }
 
-export function TableOfContents({ markdown }: TableOfContentsProps) {
+export function TableOfContents({ markdown, maxHeight = 360 }: TableOfContentsProps) {
   const headings = useMemo(() => parseHeadings(markdown), [markdown]);
   const [activeId, setActiveId] = useState<string>('');
   const navRef = useRef<HTMLElement | null>(null);
@@ -109,7 +111,7 @@ export function TableOfContents({ markdown }: TableOfContentsProps) {
           display: 'flex',
           flexDirection: 'column',
           gap: 0.25,
-          maxHeight: 360,
+          maxHeight,
           overflowY: 'auto',
         }}
       >

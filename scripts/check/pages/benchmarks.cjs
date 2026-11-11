@@ -98,7 +98,7 @@ module.exports = {
       if (f.v && !(b.factorioVersion && (b.factorioVersion === f.v || b.factorioVersion.startsWith(f.v + '.')))) return false;
       if (f.charts && !b.timeseries) return false;
       if (f.saves && b.saves.length === 0) return false;
-      const hay = [b.title, b.question || b.summary || '', b.topic ? labelOf(b.topic) : '', b.factorioVersion || '', b.platform || ''].join('\n').toLowerCase();
+      const hay = [b.title, b.question, b.finding, b.summary, b.topic ? labelOf(b.topic) : '', b.factorioVersion, b.platform, b.cpu].filter(Boolean).join('\n').toLowerCase();
       return (f.q || '').toLowerCase().split(/\s+/).filter(Boolean).every((t) => hay.includes(t));
     });
     const shownSlugs = (pg) => pg.$$eval('main tbody tr a[href^="/benchmarks/"]', (as) => as.map((a) => a.getAttribute('href').replace('/benchmarks/', '')));

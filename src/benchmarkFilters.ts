@@ -60,6 +60,14 @@ export function isFiltered(filters: BenchmarkFilters): boolean {
   );
 }
 
+/** Lower-cased text the free-text filter and the site search both match a benchmark against. */
+export function benchmarkMatchText(b: BenchmarkEntry, topicLabel: string | undefined): string {
+  return [b.title, b.question, b.finding, b.summary, topicLabel, b.factorioVersion, b.platform, b.cpu]
+    .filter(Boolean)
+    .join('\n')
+    .toLowerCase();
+}
+
 export function matches(
   b: BenchmarkEntry,
   filters: BenchmarkFilters,
@@ -74,14 +82,6 @@ export function matches(
   if (filters.saves && b.saves.length === 0) return false;
   const terms = filters.q.toLowerCase().split(/\s+/).filter(Boolean);
   if (terms.length === 0) return true;
-  const haystack = [
-    b.title,
-    b.question ?? b.summary ?? '',
-    b.topic ? topicLabel(b.topic) : '',
-    b.factorioVersion ?? '',
-    b.platform ?? '',
-  ]
-    .join('\n')
-    .toLowerCase();
+  const haystack = benchmarkMatchText(b, b.topic ? topicLabel(b.topic) : undefined);
   return terms.every((t) => haystack.includes(t));
 }
