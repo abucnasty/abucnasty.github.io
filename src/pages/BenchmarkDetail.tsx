@@ -62,6 +62,8 @@ interface Loaded {
 
 // Paragraphs and lists in the lead sit flush at the top and bottom and 1em apart.
 // A question written as a list item shows without a bullet or indent.
+const upper = { textTransform: 'uppercase' } as const;
+
 const leadBlocks = {
   '& p, & ul, & ol': { my: 0 },
   '&& > * + *': { mt: '1em' },
@@ -237,6 +239,10 @@ export function BenchmarkDetail() {
                   // Typography gives paragraphs their own size; the question sets it for the whole block.
                   '& p': { fontSize: 'inherit', lineHeight: 'inherit' },
                   '& > ul, & > ol': { p: 0, listStyle: 'none' },
+                  // Some questions are written in lower case in the source README.
+                  '& > p:first-child::first-letter': upper,
+                  '& > ul:first-child > li:first-child::first-letter': upper,
+                  '& > ul:first-child > li:first-child > p:first-child::first-letter': upper,
                 }}
               />
               {loaded.answer && <MarkdownRenderer source={loaded.answer} sx={leadBlocks} />}

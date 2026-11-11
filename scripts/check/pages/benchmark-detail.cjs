@@ -232,6 +232,32 @@ module.exports = {
       }
     }
 
+    // A question written in lower case starts with a capital in the lead.
+    const lowerStart = list.find((b) => {
+      const f = path.join(generatedDir, b.slug, 'question.md');
+      if (!b.question || !fs.existsSync(f)) return false;
+      const first = fs.readFileSync(f, 'utf8').replace(/^\s*(?:[-*]\s+)?/, '')[0];
+      return first && first !== first.toUpperCase();
+    });
+    if (lowerStart) {
+      for (const viewport of ['desktop', 'phone']) {
+        const page = await open(`/benchmarks/${lowerStart.slug}`, viewport);
+        await page.waitForSelector(LEAD, { timeout: 10000 });
+        await shot(page, `benchmark-lead-lower-${lowerStart.slug}-${viewport}`);
+        const transform = await page
+          .locator(LEAD)
+          .locator('p, li')
+          .first()
+          .evaluate((e) => getComputedStyle(e, '::first-letter').textTransform);
+        expect(`lower-case question (${lowerStart.slug}), ${viewport}: first letter is upper-case`, transform === 'uppercase', transform);
+        const answerEl = page.locator(`${LEAD} > :nth-child(2)`);
+        const answerTransform = (await answerEl.count())
+          ? await answerEl.evaluate((e) => getComputedStyle(e.querySelector('p, li') ?? e, '::first-letter').textTransform)
+          : 'none';
+        expect(`lower-case question (${lowerStart.slug}), ${viewport}: answer is not transformed`, answerTransform !== 'uppercase', answerTransform);
+      }
+    }
+
     // The lead stays above the tabs on the other tabs.
     const tabbed = list.find((b) => b.question && (b.timeseries || b.saves.length > 0));
     if (tabbed) {
