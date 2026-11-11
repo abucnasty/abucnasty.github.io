@@ -7,6 +7,7 @@ import { BrandAvatar } from './BrandAvatar';
 
 const navItems = [
   { to: '/benchmarks', label: 'Benchmarks' },
+  { to: '/saves', label: 'Saves' },
   { to: '/blueprints', label: 'Blueprints' },
   { to: '/tools', label: 'Tools' },
   { to: '/blog', label: 'Blog' },
@@ -42,7 +43,8 @@ export function AppShell({ children }: AppShellProps) {
                 color: 'primary.main',
                 fontWeight: 700,
                 letterSpacing: 1,
-                display: { xs: 'none', sm: 'block' },
+                // With six nav items the wordmark only fits beside them from `md`.
+                display: { xs: 'none', md: 'block' },
               }}
             >
               abucnasty

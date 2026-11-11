@@ -59,7 +59,8 @@ jobs:
           REPO='${{ steps.manifest.outputs.repo }}'
           BRANCH='${{ steps.manifest.outputs.branch }}'
           DEST="${RUNNER_TEMP}/${REPO}"
-          git clone --depth 1 --filter=blob:none --sparse \
+          # blob:limit=1k: fetch every git-lfs pointer up front for the /saves index.
+          git clone --depth 1 --filter=blob:limit=1k --sparse \
             --branch "${BRANCH}" \
             "https://github.com/${OWNER}/${REPO}.git" "${DEST}"
           mapfile -t SPARSE_PATHS < .sparse-paths

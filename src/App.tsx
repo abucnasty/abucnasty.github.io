@@ -1,3 +1,5 @@
+import { Suspense, lazy } from 'react';
+import { CircularProgress } from '@mui/material';
 import { Route, Routes } from 'react-router-dom';
 import { AppShell } from './components/AppShell';
 import { Home } from './pages/Home';
@@ -9,6 +11,15 @@ import { Tools } from './pages/Tools';
 import { BlogIndex } from './pages/BlogIndex';
 import { BlogPost } from './pages/BlogPost';
 import { NotFound } from './pages/NotFound';
+import { loadSaveTree } from './saves';
+
+// The save browser and its index are split out of the main bundle: only
+// visitors to /saves download them. The index starts loading alongside the
+// page code rather than after it.
+const Saves = lazy(() => {
+  loadSaveTree().catch(() => {}); // the page itself reports a failed load
+  return import('./pages/Saves').then((m) => ({ default: m.Saves }));
+});
 
 export function App() {
   return (
@@ -17,6 +28,14 @@ export function App() {
         <Route path="/" element={<Home />} />
         <Route path="/benchmarks" element={<BenchmarksIndex />} />
         <Route path="/benchmarks/:slug" element={<BenchmarkDetail />} />
+        <Route
+          path="/saves/*"
+          element={
+            <Suspense fallback={<CircularProgress />}>
+              <Saves />
+            </Suspense>
+          }
+        />
         <Route path="/blueprints" element={<Blueprints />} />
         <Route path="/about" element={<About />} />
         <Route path="/tools" element={<Tools />} />
