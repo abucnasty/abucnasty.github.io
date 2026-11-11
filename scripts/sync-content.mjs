@@ -77,7 +77,7 @@ async function main() {
 
   const benchmarks = [];
   for (const entry of manifest.benchmarks) {
-    const result = await syncBenchmark(entry, githubBase, rawBase, treeBase, lfsWorkerUrl, headReader);
+    const result = await syncBenchmark(entry, githubBase, manifest.sourceRepo.branch, rawBase, treeBase, lfsWorkerUrl, headReader);
     benchmarks.push(result);
     log(`✓ ${entry.slug} (${result.assetCount} assets, ${result.saves.length} saves)`);
   }
@@ -104,12 +104,13 @@ async function main() {
 /**
  * @param {BenchmarkEntry} entry
  * @param {string} githubBase
+ * @param {string} branch
  * @param {string} rawBase
  * @param {string} treeBase
  * @param {string|null} lfsWorkerUrl
  * @param {ReturnType<typeof createHeadReader>} headReader
  */
-async function syncBenchmark(entry, githubBase, rawBase, treeBase, lfsWorkerUrl, headReader) {
+async function syncBenchmark(entry, githubBase, branch, rawBase, treeBase, lfsWorkerUrl, headReader) {
   const srcDir = path.join(SOURCE_REPO_PATH, entry.source);
   await assertDir(srcDir, `benchmark source missing: ${entry.source}`);
 
@@ -196,8 +197,8 @@ async function syncBenchmark(entry, githubBase, rawBase, treeBase, lfsWorkerUrl,
     ...entry,
     factorioVersion,
     platform,
-    githubUrl: `${githubBase}/tree/${'master'}/${entry.source}`,
-    readmeGithubUrl: `${githubBase}/blob/master/${entry.source}/README.md`,
+    githubUrl: `${githubBase}/tree/${branch}/${entry.source}`,
+    readmeGithubUrl: `${githubBase}/blob/${branch}/${entry.source}/README.md`,
     saves,
     assetCount,
     timeseries,
