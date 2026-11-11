@@ -111,8 +111,8 @@ module.exports = {
     const firstTopic = topics[0];
     expect('topics are listed', topics.length > 0);
     expect('the toggle buttons show totals over all benchmarks',
-      (await f.getByRole('button', { name: /^Interactive metrics/ }).textContent()) === `Interactive metrics${list.filter((b) => b.timeseries).length}` &&
-      (await f.getByRole('button', { name: /^Save files/ }).textContent()) === `Save files${list.filter((b) => b.saves.length > 0).length}`);
+      (await f.getByRole('button', { name: /^Interactive metrics/ }).getAttribute('aria-label')) === `Interactive metrics ${list.filter((b) => b.timeseries).length}` &&
+      (await f.getByRole('button', { name: /^Save files/ }).getAttribute('aria-label')) === `Save files ${list.filter((b) => b.saves.length > 0).length}`);
     await sameRows('filters: no parameters lists every benchmark', f, sorted);
     expect('filters: no count line without a filter', (await f.getByText(/ of \d+ benchmarks$/).count()) === 0);
 
@@ -191,6 +191,27 @@ module.exports = {
     expect(`phone: the text input and buttons are at least 44 px tall (${controls.length} controls)`, controls.length >= 6 && small.length === 0, small.map((c) => `${c.name}:${c.h}`).join(', '));
     const chipHeights = await fp.$$eval('main .MuiChip-root[aria-pressed]', (els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
     expect('phone: topic chips are at least 32 px tall', chipHeights.length === topics.length + 1 && Math.min(...chipHeights) >= 32, chipHeights.join(','));
+    const tops = async (sel) => fp.$$eval(sel, (els) => els.map((el) => Math.round(el.getBoundingClientRect().top)));
+    const toggleTops = await tops('main button[aria-label^="Interactive metrics"], main button[aria-label^="Save files"]');
+    expect('phone: the two toggle buttons share one row', toggleTops.length === 2 && toggleTops[0] === toggleTops[1], toggleTops.join(','));
+    const toggleNames = await fp.$$eval('main button[aria-pressed]', (els) => els.map((el) => el.getAttribute('aria-label') || '').filter(Boolean));
+    expect('phone: toggle accessible names stay in full',
+      toggleNames.length === 2 && /^Interactive metrics\b/.test(toggleNames[0]) && /^Save files\b/.test(toggleNames[1]), toggleNames.join(' | '));
+    const chipTops = await tops('main .MuiChip-root[aria-pressed]');
+    expect('phone: all topic chips are on one row', chipTops.length === topics.length + 1 && new Set(chipTops).size === 1, chipTops.join(','));
+    const firstRowTop = await fp.$eval('main tbody tr', (tr) => Math.round(tr.getBoundingClientRect().top));
+    expect('phone: the first body row starts above y = 420', firstRowTop < 420, `starts at ${firstRowTop} px`);
+    const lastTopic = topics[topics.length - 1];
+    await goto(fp, `/benchmarks?topic=${lastTopic.id}`);
+    const inView = await fp.evaluate(() => {
+      const chip = document.querySelector('main .MuiChip-root[aria-pressed="true"]');
+      const row = chip.parentElement;
+      const c = chip.getBoundingClientRect();
+      const r = row.getBoundingClientRect();
+      return { ok: c.left >= r.left - 1 && c.right <= r.right + 1, c: [c.left, c.right].map(Math.round), r: [r.left, r.right].map(Math.round), page: window.scrollX };
+    });
+    expect(`phone: with ?topic=${lastTopic.id} the selected chip is inside the chip row's box`, inView.ok && inView.page === 0, JSON.stringify(inView));
+    await shot(fp, 'benchmarks-topic-last-phone');
     await goto(fp, `/benchmarks?topic=${firstTopic.id}`);
     await shot(fp, 'benchmarks-topic-phone');
     const phoneTopicRows = await readRows(fp);

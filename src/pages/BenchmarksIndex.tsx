@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Box,
   Button,
@@ -98,12 +98,15 @@ function ToggleButton({
   onClick,
   icon,
   label,
+  shortLabel,
   count,
 }: {
   active: boolean;
   onClick: () => void;
   icon?: ReactNode;
   label: string;
+  /** Shown instead of `label` on `xs`; `label` stays the accessible name. */
+  shortLabel?: string;
   count?: number;
 }) {
   return (
@@ -111,11 +114,23 @@ function ToggleButton({
       variant="outlined"
       color={active ? 'primary' : 'inherit'}
       aria-pressed={active}
+      aria-label={count === undefined ? undefined : `${label} ${count}`}
       onClick={onClick}
       startIcon={icon}
       sx={{ height: controlHeight, fontSize: 13, borderColor: active ? 'primary.main' : buttonBorder }}
     >
-      {label}
+      {shortLabel ? (
+        <>
+          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+            {label}
+          </Box>
+          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+            {shortLabel}
+          </Box>
+        </>
+      ) : (
+        label
+      )}
       {count !== undefined ? (
         <Box component="span" sx={{ ml: 0.75, color: 'text.secondary' }}>
           {count}
@@ -150,6 +165,15 @@ export function BenchmarksIndex() {
     setText('');
     setParams((prev) => writeFilters(prev, NO_FILTERS), { replace: true });
   };
+
+  // A topic chosen in the URL may sit off-screen in the scrolling chip row on phones: bring it
+  // into view inside the row only (scrollIntoView would move the page too).
+  const topicRow = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const row = topicRow.current;
+    const chip = row?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (row && chip) row.scrollLeft = chip.offsetLeft - (row.clientWidth - chip.offsetWidth) / 2;
+  }, []);
 
   const rows = sorted.filter((b) => matches(b, filters, topicLabel));
   const hasTopics = content.topics.length > 0;
@@ -222,6 +246,7 @@ export function BenchmarksIndex() {
           onClick={() => update({ charts: !filters.charts })}
           icon={<BarChartIcon />}
           label="Interactive metrics"
+          shortLabel="Metrics"
           count={chartsTotal}
         />
         <ToggleButton
@@ -234,7 +259,19 @@ export function BenchmarksIndex() {
       </Box>
 
       {hasTopics ? (
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+        <Box
+          ref={topicRow}
+          sx={{
+            display: 'flex',
+            position: 'relative',
+            flexWrap: { xs: 'nowrap', sm: 'wrap' },
+            overflowX: { xs: 'auto', sm: 'visible' },
+            scrollbarWidth: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
+            '& > *': { flexShrink: 0 },
+            gap: 0.75,
+          }}
+        >
           <Chip
             label="All"
             size="small"
