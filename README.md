@@ -58,6 +58,21 @@ npm run sync     # just refresh src/generated and public/benchmarks
 
 > Note: sync is invoked explicitly via `&&` chaining in `dev` / `build`, not via `predev` / `prebuild` lifecycle hooks — this means it works even with `npm config ignore-scripts=true`.
 
+## Checking layout
+
+`npm run check` opens the **built** site (`dist/`) in headless Chromium and asserts facts about every page, at desktop (1280 × 800) and phone (390 × 844) widths. Build first, with the content clone available:
+
+```sh
+npm run build
+npm run check                       # all pages
+npm run check -- --only tools,home  # some pages
+npm run check -- --shots            # also write screenshots to check-output/ (git-ignored)
+```
+
+The runner starts `vite preview` on a free port and always stops it. It also fails any page that logs a console error or scrolls sideways on a phone. Chromium comes from Playwright; set `CHROMIUM_PATH` to use another binary.
+
+One module per page lives in `scripts/check/pages/<page>.cjs`. To check a new page or add to one, export `{ name, run(ctx) }`; `ctx.open(path, 'desktop' | 'phone')` returns a Playwright page, `ctx.expect(label, ok, detail)` records an assertion, and `ctx.data` holds the parsed `src/generated` JSON (derive counts from it rather than hard-coding them).
+
 ## Adding a new benchmark
 
 1. Make sure the benchmark folder exists in the local `factorio-benchmarks` clone with a `README.md` (and any images, csvs, save zips).
