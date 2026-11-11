@@ -122,7 +122,8 @@ export function Home() {
         data-home-strip
         sx={{
           backgroundColor: 'background.paper',
-          p: 2,
+          px: 2,
+          py: { xs: 2, sm: 1.5 },
           display: 'flex',
           alignItems: 'center',
           gap: 2,
@@ -130,7 +131,7 @@ export function Home() {
         }}
       >
         <BrandAvatar sx={{ width: 44, height: 44 }} />
-        <Box sx={{ flex: '1 1 280px', minWidth: 0, order: { xs: 2, md: 0 } }}>
+        <Box sx={{ flex: '1 1 280px', minWidth: 0, order: { xs: 2, sm: 0 } }}>
           <Typography component="h1" sx={{ fontSize: 20, fontWeight: 700, lineHeight: 1.25 }}>
             Factorio benchmarks, blueprints, and tools.
           </Typography>
@@ -139,7 +140,7 @@ export function Home() {
           </Typography>
         </Box>
         {/* On phones the links sit beside the avatar so the strip stays short. */}
-        <Box sx={{ order: { xs: 1, md: 0 }, ml: { xs: 'auto', md: 0 } }}>
+        <Box sx={{ order: { xs: 1, sm: 0 }, ml: { xs: 'auto', sm: 0 } }}>
           <SocialLinks />
         </Box>
       </Box>
