@@ -3,7 +3,7 @@
 //   npm run build && npm run check [-- --only tools,home] [-- --shots]
 //
 // Starts `vite preview` on a free port, opens pages in headless Chromium and
-// runs every module in scripts/check/pages. See docs/specs/00-check-script.md.
+// runs every module in scripts/check/pages. See "Checking layout" in README.md.
 const fs = require('fs');
 const net = require('net');
 const path = require('path');

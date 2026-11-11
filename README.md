@@ -26,7 +26,6 @@ scripts/
   sync-blog-images.mjs        # copies blog post images into public/blog
   lib/save-index.mjs          # indexes every .zip in the source repo from git objects
   check/                      # `npm run check`: run.cjs plus one module per page in pages/
-docs/specs/                   # work packages for the site restructure
 src/
   components/                 # shared: PageHeader, SectionHeader, ListRow (+ RowGroup), DenseTable;
                               # also MarkdownRenderer, BlueprintRow, SaveRows, AppShell, …
