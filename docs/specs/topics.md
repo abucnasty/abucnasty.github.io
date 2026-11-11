@@ -67,3 +67,20 @@ Topic ids are what goes in `content/manifest.json`; labels are what the site sho
 - Is "Vehicles & chests" a real group, or should Chest Transfer go under inserters and Railgun Voider somewhere else?
 - Space Science Quality is filed under science; it could equally be space.
 - Should a benchmark be allowed two topics? One keeps the filters simple.
+
+## Blueprint categories per topic (draft, for review)
+
+Used by package 12 to link a benchmark page to blueprints and the Blueprints page back to
+benchmarks. Only pairings that looked certain are listed; the other topics link to no
+blueprints. Correct this the same way as the assignment above.
+
+| Topic | Blueprint categories |
+|---|---|
+| Science builds | Uncommon Science, Common Quality Science |
+| Space platforms | Space Science |
+| Vehicles & chests | Cars / Tanks |
+| Inserters & clocking | none |
+| Mining | none |
+| Engine & method | none |
+
+Not mapped to any topic: Generic Space Age, Modules, Circuits, Miscelaneous.
