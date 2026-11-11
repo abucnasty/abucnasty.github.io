@@ -71,7 +71,7 @@ Rules:
 - A heading is an ATX heading of level 1–4. Headings inside fenced code blocks are not headings.
 - A section runs from its heading to the next heading of the **same or a higher** level (fewer or equal `#`), or the end of the file. Deeper headings belong to it.
 - `plainFirstParagraph(body, { maxLength = 280, allowList = false })`: take the lines up to the first blank line. If that block is a table, an image, an HTML block, a heading or a fenced code block, return `''`. Otherwise:
-  - a block that is a list gives its first item when `allowList` is set, and `''` when it is not (a list item is a fragment, not a statement);
+  - a block that is a list gives `''` unless `allowList` is set. With it, the first item is used when it has no nested items under it; a first item with sub-items is a group label, not a statement, and gives `''`;
   - a prose block followed directly by list items, with no blank line, keeps only the lines before the first list item;
   - strip list markers, emphasis markers (`*`, `_` used as emphasis, `**`), inline code backticks, inline images and HTML tags; replace `[text](url)` with `text`;
   - collapse whitespace to single spaces; upper-case the first letter;
@@ -87,7 +87,7 @@ For each benchmark, from the source README (after `stripOwnToc`, before link rew
 |---|---|
 | `topic` | manifest `topic` |
 | `question` | `plainFirstParagraph` (lists allowed) of the section named "The Question" or "Question"; when it contains a `?`, cut after the last one |
-| `finding` | `plainFirstParagraph` (no lists) of "The Answer" / "Answer"; if there is none, of "Conclusion" / "Conclusions". Kept only when it is at least 12 characters |
+| `finding` | `plainFirstParagraph` (lists allowed) of "The Answer" / "Answer"; if there is none, of "Conclusion" / "Conclusions". Kept only when it is at least 12 characters |
 | `cpu` | the `**CPU:**` header line, parsed like `**Platform:**` in `readme-meta.mjs` |
 
 Omit a field when it has no value. Top level of `index.json` gains
