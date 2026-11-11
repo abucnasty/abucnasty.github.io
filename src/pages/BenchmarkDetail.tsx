@@ -33,17 +33,50 @@ const readmeModules = import.meta.glob('../generated/benchmarks/*/README.md', {
   import: 'default',
 });
 
-function loaderFor(slug: string): (() => Promise<string>) | undefined {
-  const key = `../generated/benchmarks/${slug}/README.md`;
-  const loader = readmeModules[key];
-  return loader as (() => Promise<string>) | undefined;
+// The question and answer lifted out of the README by the sync. A missing key means no such file.
+const questionModules = import.meta.glob('../generated/benchmarks/*/question.md', {
+  query: '?raw',
+  import: 'default',
+});
+const answerModules = import.meta.glob('../generated/benchmarks/*/answer.md', {
+  query: '?raw',
+  import: 'default',
+});
+
+type Loader = () => Promise<string>;
+
+function loaderFor(
+  modules: Record<string, () => Promise<unknown>>,
+  slug: string,
+  file: string,
+): Loader | undefined {
+  return modules[`../generated/benchmarks/${slug}/${file}`] as Loader | undefined;
 }
+
+interface Loaded {
+  slug: string;
+  readme: string;
+  question: string | null;
+  answer: string | null;
+}
+
+// Paragraphs and lists in the lead sit flush at the top and bottom and 1em apart.
+// A question written as a list item shows without a bullet or indent.
+const leadBlocks = {
+  '& p, & ul, & ol': { my: 0 },
+  '&& > * + *': { mt: '1em' },
+  '& li + li': { mt: '0.25em' },
+} as const;
 
 export function BenchmarkDetail() {
   const { slug = '' } = useParams();
   const benchmark = content.benchmarks.find((b) => b.slug === slug);
-  const [markdown, setMarkdown] = useState<string | null>(null);
+  // Tagged with its slug so a page never shows the previous benchmark's text while the next loads.
+  const [loadedState, setLoaded] = useState<Loaded | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const loaded = loadedState && loadedState.slug === slug ? loadedState : null;
+  const markdown = loaded?.readme ?? null;
+  const topic = content.topics.find((t) => t.id === benchmark?.topic);
   const hasCharts = Boolean(benchmark?.timeseries);
   const hasSaves = (benchmark?.saves.length ?? 0) > 0;
   const hasTabs = hasCharts || hasSaves;
@@ -54,17 +87,36 @@ export function BenchmarkDetail() {
   }, [hasTabs, slug]);
 
   useEffect(() => {
-    setMarkdown(null);
+    setLoaded(null);
     setError(null);
     if (!benchmark) return;
-    const loader = loaderFor(benchmark.slug);
-    if (!loader) {
+    const readme = loaderFor(readmeModules, benchmark.slug, 'README.md');
+    if (!readme) {
       setError('README content not found for this benchmark.');
       return;
     }
-    loader()
-      .then((md) => setMarkdown(md.replace(/^\s*#\s+.*\r?\n+/, '')))
-      .catch((e) => setError(String(e)));
+    const question = benchmark.question
+      ? loaderFor(questionModules, benchmark.slug, 'question.md')
+      : undefined;
+    const answer = question ? loaderFor(answerModules, benchmark.slug, 'answer.md') : undefined;
+    let cancelled = false;
+    // Everything arrives together, so the page does not jump.
+    Promise.all([readme(), question?.() ?? null, answer?.() ?? null])
+      .then(([md, q, a]) => {
+        if (cancelled) return;
+        setLoaded({
+          slug: benchmark.slug,
+          readme: md.replace(/^\s*#\s+.*\r?\n+/, ''),
+          question: q,
+          answer: a,
+        });
+      })
+      .catch((e) => {
+        if (!cancelled) setError(String(e));
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [benchmark]);
 
   if (!benchmark) {
@@ -93,14 +145,52 @@ export function BenchmarkDetail() {
       <Box sx={{ minWidth: 0 }}>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         <Box sx={{ mb: hasTabs ? 2 : 3 }}>
-          <PageHeader overline={benchmark.date ?? 'Benchmark'} title={benchmark.title} />
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+          <Box
+            component="nav"
+            aria-label="Breadcrumb"
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              columnGap: 1,
+              fontSize: 13,
+              mb: 0.5,
+              '& a': { display: 'inline-flex', alignItems: 'center', minHeight: 24 },
+            }}
+          >
+            <Link component={RouterLink} to="/benchmarks" underline="hover" color="primary.main">
+              Benchmarks
+            </Link>
+            {topic && (
+              <>
+                <Box component="span" aria-hidden sx={{ color: 'text.secondary' }}>
+                  /
+                </Box>
+                <Link
+                  component={RouterLink}
+                  to={`/benchmarks?topic=${encodeURIComponent(topic.id)}`}
+                  underline="hover"
+                  color="primary.main"
+                >
+                  {topic.label}
+                </Link>
+              </>
+            )}
+          </Box>
+          <PageHeader title={benchmark.title} />
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, mt: 1 }}>
+            {benchmark.date && (
+              <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
+                {benchmark.date}
+              </Typography>
+            )}
             {benchmark.factorioVersion && (
               <Chip size="small" variant="outlined" label={`Factorio ${benchmark.factorioVersion}`} />
             )}
             {benchmark.platform && (
               <Chip size="small" variant="outlined" label={formatPlatform(benchmark.platform)} />
             )}
+            {benchmark.cpu && <Chip size="small" variant="outlined" label={benchmark.cpu} />}
             {hasSaves && (
               <Chip
                 size="small"
@@ -124,6 +214,34 @@ export function BenchmarkDetail() {
               <Chip key={t} label={t} size="small" variant="outlined" />
             ))}
           </Box>
+          {loaded?.question && (
+            <Box
+              component="section"
+              aria-label="Question and answer"
+              sx={{
+                backgroundColor: 'background.paper',
+                p: 2,
+                mt: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1.5,
+              }}
+            >
+              <MarkdownRenderer
+                source={loaded.question}
+                sx={{
+                  fontSize: { xs: 18, md: 20 },
+                  lineHeight: 1.4,
+                  color: 'text.primary',
+                  ...leadBlocks,
+                  // Typography gives paragraphs their own size; the question sets it for the whole block.
+                  '& p': { fontSize: 'inherit', lineHeight: 'inherit' },
+                  '& > ul, & > ol': { p: 0, listStyle: 'none' },
+                }}
+              />
+              {loaded.answer && <MarkdownRenderer source={loaded.answer} sx={leadBlocks} />}
+            </Box>
+          )}
         </Box>
         {hasTabs ? (
           <>
