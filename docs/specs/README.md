@@ -9,7 +9,7 @@ The work ships in three steps, each one PR against `main`:
 | Step | Packages | What ships |
 |---|---|---|
 | 1. Layout only | 00–06 | Compact sizes, new Home, Tools as rows, cleaner benchmark page |
-| 2. Topics and questions | 07–10 | Topic per benchmark, question/answer, filters |
+| 2. Topics and questions | 07–10b | Topic per benchmark, question and finding, filters |
 | 3. Search and cross-links | 11–12 | Site search, related links |
 
 Step 2 and 3 specs are written when their step starts. `topics.md` is the input for step 2.
