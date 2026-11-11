@@ -11,7 +11,7 @@ export interface BenchmarkSave {
   name: string;
   /** Path within the source benchmark folder. */
   path: string;
-  /** Direct download URL (github.com raw with ?download= for LFS support). */
+  /** Direct download URL on the LFS worker: `<lfsWorkerUrl>/objects/<oid>/<file name>`. */
   url: string;
 }
 
@@ -36,6 +36,7 @@ export interface BenchmarkEntry {
 export interface ContentIndex {
   sourceRepo: SourceRepo;
   benchmarks: BenchmarkEntry[];
+  saveStats: { count: number; bytes: number };
 }
 
 export interface BlueprintEntry {

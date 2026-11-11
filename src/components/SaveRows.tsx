@@ -9,6 +9,7 @@ import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutl
 import LinkIcon from '@mui/icons-material/Link';
 import { Link as RouterLink } from 'react-router-dom';
 import { formatBytes, formatSaveCount } from '../format';
+import { layout } from '../layout';
 import { saveFolderRoute, type SaveFile } from '../saves';
 
 export const monoFont = '"Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
@@ -83,8 +84,8 @@ export function SaveFolderRow({ path, label, titled, count, bytes, details }: Sa
       to={saveFolderRoute(path)}
       sx={{
         ...rowSx,
-        minHeight: 48,
-        py: 0.75,
+        minHeight: { xs: 48, md: layout.rowHeight },
+        py: { xs: 0.75, md: 0.25 },
         pl: 1.5,
         pr: 1,
         color: 'text.primary',
@@ -99,7 +100,7 @@ export function SaveFolderRow({ path, label, titled, count, bytes, details }: Sa
         <Box
           sx={
             titled
-              ? { fontSize: 15, fontWeight: 700, overflowWrap: 'anywhere' }
+              ? { fontSize: 14, fontWeight: 700, overflowWrap: 'anywhere' }
               : { fontFamily: monoFont, fontSize: 13.5, overflowWrap: 'anywhere' }
           }
         >
@@ -137,7 +138,7 @@ interface SaveFileRowProps {
 
 export function SaveFileRow({ file, showFolder }: SaveFileRowProps) {
   return (
-    <Box sx={{ ...rowSx, minHeight: 52, py: 0.5, pl: 1.5, pr: 0.5 }}>
+    <Box sx={{ ...rowSx, minHeight: { xs: 52, md: 36 }, py: { xs: 0.5, md: 0 }, pl: 1.5, pr: 0.5 }}>
       <InsertDriveFileOutlinedIcon sx={{ color: 'text.secondary', fontSize: 20, flexShrink: 0 }} />
       <Box
         sx={{
@@ -184,9 +185,9 @@ export function SaveFileRow({ file, showFolder }: SaveFileRowProps) {
           href={file.url}
           color="primary"
           aria-label={`Download ${file.name}`}
-          sx={{ width: 44, height: 44, flexShrink: 0 }}
+          sx={{ width: { xs: 44, md: 32 }, height: { xs: 44, md: 32 }, flexShrink: 0 }}
         >
-          <DownloadIcon />
+          <DownloadIcon fontSize="small" />
         </IconButton>
       </Tooltip>
     </Box>
@@ -230,8 +231,8 @@ export function CopyButton({ text, label, tooltip, icon, hideOnPhone }: CopyButt
         aria-label={label}
         sx={{
           display: hideOnPhone ? { xs: 'none', sm: 'inline-flex' } : 'inline-flex',
-          width: 44,
-          height: 44,
+          width: { xs: 44, md: 32 },
+          height: { xs: 44, md: 32 },
           flexShrink: 0,
           color: state === 'copied' ? 'secondary.light' : 'text.secondary',
         }}

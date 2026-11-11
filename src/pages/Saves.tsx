@@ -33,6 +33,9 @@ import {
   type SaveTree,
 } from '../saves';
 import { CopyButton, SaveFileRow, SaveFolderRow, monoFont } from '../components/SaveRows';
+import { PageHeader } from '../components/PageHeader';
+import { SectionHeader } from '../components/SectionHeader';
+import { RowGroup } from '../components/ListRow';
 
 const { sourceRepo } = index as ContentIndex;
 const repoUrl = `https://github.com/${sourceRepo.owner}/${sourceRepo.repo}`;
@@ -109,20 +112,20 @@ export function Saves() {
   const notFound = Boolean(tree) && !searching && !folder;
 
   return (
-    <Stack spacing={3}>
-      <Box>
-        <Typography variant="h3" component="h1">
-          Save files
-        </Typography>
-        <Typography variant="body1" sx={{ color: 'text.secondary', mt: 1 }}>
-          {tree ? tree.root.count : '…'} Factorio saves from the{' '}
-          <Link href={repoUrl} target="_blank" rel="noopener noreferrer">
-            {sourceRepo.repo}
-          </Link>{' '}
-          repo, {tree ? formatBytes(tree.root.bytes) : '…'} in total. Every download is served from
-          Cloudflare.
-        </Typography>
-      </Box>
+    <Stack spacing={2}>
+      <PageHeader
+        title="Save files"
+        meta={
+          <>
+            {tree ? tree.root.count : '…'} Factorio saves from the{' '}
+            <Link href={repoUrl} target="_blank" rel="noopener noreferrer">
+              {sourceRepo.repo}
+            </Link>{' '}
+            repo, {tree ? formatBytes(tree.root.bytes) : '…'} in total. Every download is served from
+            Cloudflare.
+          </>
+        }
+      />
 
       <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
         <OutlinedInput
@@ -148,7 +151,7 @@ export function Saves() {
               </InputAdornment>
             ) : null
           }
-          sx={{ flex: '1 1 300px', height: 44, fontSize: 15, backgroundColor: 'background.paper' }}
+          sx={{ flex: '1 1 300px', height: { xs: 44, md: 36 }, fontSize: 15, backgroundColor: 'background.paper' }}
         />
         {!notFound && (
           <Stack direction="row" spacing={1} alignItems="center">
@@ -164,7 +167,7 @@ export function Saves() {
                   color={active ? 'primary' : 'inherit'}
                   aria-pressed={active}
                   onClick={() => setParam('sort', s.key === sorts[0].key ? null : s.key)}
-                  sx={{ height: 44, fontSize: 13, borderColor: active ? 'primary.main' : 'rgba(255, 255, 255, 0.23)' }}
+                  sx={{ height: { xs: 44, md: 36 }, fontSize: 13, borderColor: active ? 'primary.main' : 'rgba(255, 255, 255, 0.23)' }}
                 >
                   {s.label}
                 </Button>
@@ -233,30 +236,16 @@ function Landing({ tree, sort }: { tree: SaveTree; sort: SortKey }) {
     <Stack spacing={4}>
       {sections.map((section) => (
         <Box key={section.path} component="section">
-          <Box
-            sx={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'baseline',
-              justifyContent: 'space-between',
-              columnGap: 1.5,
-              borderBottom: '1px solid',
-              borderColor: 'primary.main',
-            }}
-          >
-            <Typography
-              variant="overline"
-              component="h2"
-              sx={{ color: 'primary.main', letterSpacing: 1, fontSize: 12 }}
-            >
-              {section.name}
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: 13 }}>
-              {section.folders.length} {section.folders.length === 1 ? 'folder' : 'folders'} ·{' '}
-              {formatSaveCount(section.count)} · {formatBytes(section.bytes)}
-            </Typography>
-          </Box>
-          <Box sx={{ backgroundColor: 'background.paper' }}>
+          <SectionHeader
+            label={section.name}
+            summary={
+              <>
+                {section.folders.length} {section.folders.length === 1 ? 'folder' : 'folders'} ·{' '}
+                {formatSaveCount(section.count)} · {formatBytes(section.bytes)}
+              </>
+            }
+          />
+          <RowGroup>
             {sortFolders(section.folders, sort, tree.meta).map((f) => {
               const meta = tree.meta[f.path];
               return (
@@ -274,15 +263,15 @@ function Landing({ tree, sort }: { tree: SaveTree; sort: SortKey }) {
             {sortFiles(section.files, sort).map((f) => (
               <SaveFileRow key={f.path} file={f} />
             ))}
-          </Box>
+          </RowGroup>
         </Box>
       ))}
       {tree.root.files.length > 0 && (
-        <Box sx={{ backgroundColor: 'background.paper', borderTop: 1, borderColor: 'divider' }}>
+        <RowGroup>
           {sortFiles(tree.root.files, sort).map((f) => (
             <SaveFileRow key={f.path} file={f} />
           ))}
-        </Box>
+        </RowGroup>
       )}
     </Stack>
   );
@@ -322,7 +311,7 @@ function FolderView({ tree, folder, sort }: { tree: SaveTree; folder: SaveFolder
 
       {segments.length >= 2 && <FolderHeader tree={tree} folder={folder} />}
 
-      <Box sx={{ backgroundColor: 'background.paper', borderTop: 1, borderColor: 'divider' }}>
+      <RowGroup>
         {sortFolders(folder.folders, sort).map((f) => {
           const end = collapseChain(f);
           return (
@@ -332,7 +321,7 @@ function FolderView({ tree, folder, sort }: { tree: SaveTree; folder: SaveFolder
         {sortFiles(folder.files, sort).map((f) => (
           <SaveFileRow key={f.path} file={f} />
         ))}
-      </Box>
+      </RowGroup>
 
       <Stack spacing={1} component="section">
         <Typography variant="overline" component="h2" sx={{ color: 'text.secondary', letterSpacing: 1, fontSize: 12 }}>
@@ -365,7 +354,7 @@ function FolderHeader({ tree, folder }: { tree: SaveTree; folder: SaveFolder }) 
       component="section"
       sx={{
         backgroundColor: 'background.paper',
-        p: 3,
+        p: 2,
         display: 'flex',
         flexWrap: 'wrap',
         alignItems: 'center',
@@ -439,11 +428,11 @@ function SearchResults({ tree, query, sort }: { tree: SaveTree; query: string; s
           No saves match that search. Try part of a file name, a folder or a benchmark title.
         </Typography>
       ) : (
-        <Box sx={{ backgroundColor: 'background.paper', borderTop: 1, borderColor: 'divider' }}>
+        <RowGroup>
           {shown.map((f) => (
             <SaveFileRow key={f.path} file={f} showFolder />
           ))}
-        </Box>
+        </RowGroup>
       )}
     </>
   );

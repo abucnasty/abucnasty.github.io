@@ -1,117 +1,195 @@
-import { Box, Button, Stack, Typography } from '@mui/material';
+import { Box, Chip, Stack, Typography } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import index from '../generated/index.json';
-import type { ContentIndex } from '../content';
-import { BenchmarkCard } from '../components/BenchmarkCard';
+import blueprints from '../generated/blueprints.json';
+import type { BlueprintIndex, ContentIndex } from '../content';
+import { blogPosts } from '../blog/registry';
+import { formatBytes } from '../format';
+import { layout } from '../layout';
 import { SocialLinks } from '../components/SocialLinks';
 import { LatestVideo } from '../components/LatestVideo';
 import { BrandAvatar } from '../components/BrandAvatar';
+import { SectionHeader } from '../components/SectionHeader';
+import { ListRow, RowGroup } from '../components/ListRow';
 
 const content = index as ContentIndex;
+const blueprintIndex = blueprints as BlueprintIndex;
+
+const LATEST_COUNT = 8;
+
+interface FeedItem {
+  key: string;
+  to: string;
+  date: string;
+  title: string;
+  /** Chip text: the Factorio version for a benchmark, "Post" for a post. */
+  tag?: string;
+}
+
+function benchmarkItem(b: ContentIndex['benchmarks'][number]): FeedItem {
+  return {
+    key: `benchmark:${b.slug}`,
+    to: `/benchmarks/${b.slug}`,
+    date: b.date ?? '',
+    title: b.title,
+    tag: b.factorioVersion,
+  };
+}
+
+function FeedRow({ item }: { item: FeedItem }) {
+  return (
+    <ListRow
+      to={item.to}
+      lead={
+        <Box
+          component="span"
+          sx={{ fontSize: 13, color: 'text.secondary', fontVariantNumeric: 'tabular-nums', width: 76 }}
+        >
+          {item.date || ' '}
+        </Box>
+      }
+      title={item.title}
+      trailing={
+        item.tag ? (
+          <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
+            <Chip label={item.tag} size="small" variant="outlined" />
+          </Box>
+        ) : undefined
+      }
+    />
+  );
+}
+
+const latest: FeedItem[] = [
+  ...content.benchmarks.filter((b) => b.date).map(benchmarkItem),
+  ...blogPosts.map(
+    (p): FeedItem => ({
+      key: `post:${p.slug}`,
+      to: `/blog/${p.slug}`,
+      date: p.date,
+      title: p.title,
+      tag: 'Post',
+    }),
+  ),
+]
+  .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+  .slice(0, LATEST_COUNT);
+
+const latestKeys = new Set(latest.map((i) => i.key));
+const featured = content.benchmarks
+  .filter((b) => b.featured)
+  .map(benchmarkItem)
+  .filter((i) => !latestKeys.has(i.key));
+
+const activeBlueprints = blueprintIndex.categories.reduce(
+  (n, c) => n + c.entries.filter((e) => !e.deprecated).length,
+  0,
+);
+
+const alsoHere: Array<{ title: string; subtitle: string; to: string }> = [
+  { title: 'Blueprints', subtitle: `${activeBlueprints} active blueprints`, to: '/blueprints' },
+  {
+    title: 'Save files',
+    subtitle: `${content.saveStats.count} saves, ${formatBytes(content.saveStats.bytes)}`,
+    to: '/saves',
+  },
+  { title: 'Tools and mods', subtitle: 'Benchmarking tools, utilities and mods', to: '/tools' },
+  {
+    title: 'Blog',
+    subtitle: `${blogPosts.length} ${blogPosts.length === 1 ? 'post' : 'posts'}`,
+    to: '/blog',
+  },
+  { title: 'About', subtitle: 'Who runs this and how to get in touch', to: '/about' },
+];
 
 export function Home() {
-  const featured = content.benchmarks.filter((b) => b.featured);
   return (
-    <Stack spacing={6}>
+    <Stack spacing={layout.sectionGap}>
       <Box
+        data-home-strip
         sx={{
-          py: { xs: 6, md: 10 },
-          px: { xs: 3, md: 6 },
           backgroundColor: 'background.paper',
-          borderLeft: '6px solid',
-          borderColor: 'primary.main',
+          p: 2,
           display: 'flex',
-          flexDirection: { xs: 'column', md: 'row' },
-          gap: { xs: 4, md: 6 },
-          alignItems: { xs: 'flex-start', md: 'center' },
+          alignItems: 'center',
+          gap: 2,
+          flexWrap: 'wrap',
         }}
       >
-        <BrandAvatar
-          sx={{
-            width: { xs: 96, sm: 120, md: 180 },
-            height: { xs: 96, sm: 120, md: 180 },
-          }}
-        />
-        <Box>
-          <Typography
-            variant="overline"
-            sx={{ color: 'primary.main', letterSpacing: 2 }}
-          >
-            abucnasty
+        <BrandAvatar sx={{ width: 44, height: 44 }} />
+        <Box sx={{ flex: '1 1 280px', minWidth: 0, order: { xs: 2, md: 0 } }}>
+          <Typography component="h1" sx={{ fontSize: 20, fontWeight: 700, lineHeight: 1.25 }}>
+            Factorio benchmarks, blueprints, and tools.
           </Typography>
-          <Typography
-            variant="h2"
-            sx={{
-              fontWeight: 700,
-              mt: 1,
-              lineHeight: { xs: 1.12, sm: 1.08, md: 1.05 },
-              fontSize: { xs: '2rem', sm: '2.8rem' },
-            }}
-          >
-            Factorio benchmarks,
-            <br />
-            blueprints, and tools.
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            UPS research and side-projects from abucnasty. Everything here is open source.
           </Typography>
-          <Typography
-            variant="h6"
-            sx={{ color: 'text.secondary', mt: 2, maxWidth: 720, fontWeight: 400 }}
-          >
-            A home for the UPS research, blueprint registry, and side-projects from{' '}
-            <Box component="span" sx={{ color: 'text.primary', fontWeight: 600 }}>
-              abucnasty
-            </Box>
-            . Everything here is open source.
-          </Typography>
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={2}
-            sx={{ mt: 4 }}
-            alignItems={{ xs: 'flex-start', sm: 'center' }}
-          >
-            <Button
-              component={RouterLink}
-              to="/benchmarks"
-              variant="contained"
-              size="large"
-            >
-              Browse benchmarks
-            </Button>
-            <Button
-              component={RouterLink}
-              to="/blueprints"
-              variant="outlined"
-              size="large"
-              color="secondary"
-            >
-              Blueprints
-            </Button>
-            <Box sx={{ ml: { sm: 1 } }}>
-              <SocialLinks />
-            </Box>
-          </Stack>
+        </Box>
+        {/* On phones the links sit beside the avatar so the strip stays short. */}
+        <Box sx={{ order: { xs: 1, md: 0 }, ml: { xs: 'auto', md: 0 } }}>
+          <SocialLinks />
         </Box>
       </Box>
 
-      {featured.length > 0 && (
-        <Box>
-          <Typography variant="h4" sx={{ mb: 3 }}>
-            Featured benchmarks
-          </Typography>
-          <Box
-            sx={{
-              display: 'grid',
-              gap: 3,
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
-            }}
-          >
-            {featured.map((b) => (
-              <BenchmarkCard key={b.slug} benchmark={b} />
-            ))}
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1.75fr) minmax(0, 1fr)' },
+          gap: { xs: layout.sectionGap, md: 4 },
+          alignItems: 'start',
+        }}
+      >
+        <Stack spacing={layout.sectionGap}>
+          <Box>
+            <SectionHeader label="Latest" summary="benchmarks and posts, newest first" />
+            <RowGroup>
+              {latest.map((item) => (
+                <FeedRow key={item.key} item={item} />
+              ))}
+            </RowGroup>
+            <Typography
+              component={RouterLink}
+              to="/benchmarks"
+              variant="body2"
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                minHeight: { xs: layout.touchTarget, md: 'auto' },
+                py: 1,
+                px: 1.25,
+                color: 'primary.main',
+              }}
+            >
+              All {content.benchmarks.length} benchmarks
+            </Typography>
           </Box>
-        </Box>
-      )}
+          {featured.length > 0 && (
+            <Box>
+              <SectionHeader label="Featured" />
+              <RowGroup>
+                {featured.map((item) => (
+                  <FeedRow key={item.key} item={item} />
+                ))}
+              </RowGroup>
+            </Box>
+          )}
+        </Stack>
 
-      <LatestVideo />
+        <Stack spacing={layout.sectionGap}>
+          <Box>
+            <SectionHeader label="Also here" />
+            <RowGroup>
+              {alsoHere.map((r) => (
+                <ListRow key={r.to} to={r.to} title={r.title} subtitle={r.subtitle} />
+              ))}
+            </RowGroup>
+          </Box>
+          <Box>
+            <SectionHeader label="Latest video" />
+            <LatestVideo compact />
+          </Box>
+        </Stack>
+      </Box>
     </Stack>
   );
 }

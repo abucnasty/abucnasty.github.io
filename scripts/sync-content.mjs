@@ -6,7 +6,10 @@
  *
  * - README.md is rewritten and written to src/generated/benchmarks/<slug>/README.md
  * - All other non-`.zip` files are copied (preserving sub-paths) to public/benchmarks/<slug>/
- * - `.zip` files are NOT copied; raw GitHub URLs are emitted in the index instead.
+ * - `.zip` files are NOT copied; the index gets a download URL on the LFS worker
+ *   (`manifest.lfsWorkerUrl`) built from the file's git-lfs object id at HEAD.
+ * - Relative links in a README point at GitHub: a folder gets its `tree` page, a file
+ *   tracked by git-lfs gets the same LFS worker URL as a save, anything else the raw file.
  * - Blueprints README is copied to src/generated/blueprints.md
  * - Every `.zip` committed to the source repo (curated or not) is indexed into
  *   src/generated/saves.json for the /saves page — see scripts/lib/save-index.mjs.
@@ -25,7 +28,8 @@ import dotenv from 'dotenv';
 import { parseBlueprintsMarkdown } from './parse-blueprints.mjs';
 import { aggregateScenarioCsv } from './lib/aggregate.mjs';
 import { parseReadmeMeta } from './lib/readme-meta.mjs';
-import { buildSaveIndex } from './lib/save-index.mjs';
+import { stripOwnToc } from './lib/strip-toc.mjs';
+import { buildSaveIndex, createHeadReader } from './lib/save-index.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -58,7 +62,9 @@ async function main() {
 
   const githubBase = `https://github.com/${manifest.sourceRepo.owner}/${manifest.sourceRepo.repo}`;
   const rawBase = `https://raw.githubusercontent.com/${manifest.sourceRepo.owner}/${manifest.sourceRepo.repo}/${manifest.sourceRepo.branch}`;
+  const treeBase = `${githubBase}/tree/${manifest.sourceRepo.branch}`;
   const lfsWorkerUrl = manifest.lfsWorkerUrl ?? null;
+  const headReader = createHeadReader(SOURCE_REPO_PATH);
 
   // First, so a broken save index fails the sync before any slower work.
   const saveIndex = buildSaveIndex({
@@ -71,7 +77,7 @@ async function main() {
 
   const benchmarks = [];
   for (const entry of manifest.benchmarks) {
-    const result = await syncBenchmark(entry, githubBase, rawBase, lfsWorkerUrl);
+    const result = await syncBenchmark(entry, githubBase, manifest.sourceRepo.branch, rawBase, treeBase, lfsWorkerUrl, headReader);
     benchmarks.push(result);
     log(`✓ ${entry.slug} (${result.assetCount} assets, ${result.saves.length} saves)`);
   }
@@ -82,7 +88,15 @@ async function main() {
   await fs.mkdir(GENERATED_DIR, { recursive: true });
   await fs.writeFile(
     path.join(GENERATED_DIR, 'index.json'),
-    JSON.stringify({ sourceRepo: manifest.sourceRepo, benchmarks }, null, 2),
+    JSON.stringify(
+      {
+        sourceRepo: manifest.sourceRepo,
+        benchmarks,
+        saveStats: { count: saveIndex.files.length, bytes: saveIndex.files.reduce((sum, file) => sum + file[1], 0) },
+      },
+      null,
+      2,
+    ),
   );
   log(`✓ index.json (${benchmarks.length} benchmarks)`);
 }
@@ -90,10 +104,13 @@ async function main() {
 /**
  * @param {BenchmarkEntry} entry
  * @param {string} githubBase
+ * @param {string} branch
  * @param {string} rawBase
+ * @param {string} treeBase
  * @param {string|null} lfsWorkerUrl
+ * @param {ReturnType<typeof createHeadReader>} headReader
  */
-async function syncBenchmark(entry, githubBase, rawBase, lfsWorkerUrl) {
+async function syncBenchmark(entry, githubBase, branch, rawBase, treeBase, lfsWorkerUrl, headReader) {
   const srcDir = path.join(SOURCE_REPO_PATH, entry.source);
   await assertDir(srcDir, `benchmark source missing: ${entry.source}`);
 
@@ -118,38 +135,33 @@ async function syncBenchmark(entry, githubBase, rawBase, lfsWorkerUrl) {
     if (ext === '.zip') {
       const relPath = rel.split(path.sep).join('/');
       const gitObjectPath = `${entry.source}/${relPath}`;
-      let url;
-      if (lfsWorkerUrl) {
-        // Prefer reading via git (always returns the raw LFS pointer text,
-        // regardless of whether the smudge filter has materialised the file).
-        // Fall back to reading the file directly for files not yet committed.
-        let pointer;
-        try {
-          pointer = execFileSync(
-            'git', ['-C', SOURCE_REPO_PATH, 'show', `HEAD:${gitObjectPath}`],
-            { encoding: 'utf8' },
-          );
-        } catch {
-          // File may be gitignored or untracked — skip it silently.
-          const ignored = (() => {
-            try {
-              execFileSync('git', ['-C', SOURCE_REPO_PATH, 'check-ignore', '-q', absFile]);
-              return true;
-            } catch {
-              return false;
-            }
-          })();
-          if (ignored) continue;
-          pointer = await fs.readFile(absFile, 'utf8').catch(() => '');
-        }
-        const oidMatch = pointer.match(/^oid sha256:([0-9a-f]{64})$/m);
-        if (!oidMatch) throw new Error(`No LFS OID found for ${gitObjectPath} — ensure the file is tracked by git-lfs`);
-        // Append the original filename so browsers save the file with the right name.
-        url = `${lfsWorkerUrl}/objects/${oidMatch[1]}/${encodeURIComponent(path.basename(relPath))}`;
-      } else {
-        const githubDownloadBase = `https://github.com/${entry.source}/raw/refs/heads/master`;
-        url = `${githubDownloadBase}/${entry.source}/${relPath}?download=`;
+      // Read via git (always returns the raw LFS pointer text, regardless of
+      // whether the smudge filter has materialised the file). buildSaveIndex has
+      // already failed the sync if lfsWorkerUrl is unset.
+      let pointer;
+      try {
+        pointer = execFileSync(
+          'git', ['-C', SOURCE_REPO_PATH, 'show', `HEAD:${gitObjectPath}`],
+          { encoding: 'utf8' },
+        );
+      } catch {
+        // Not committed: a gitignored file is skipped silently, an untracked one
+        // is read from disk.
+        const ignored = (() => {
+          try {
+            execFileSync('git', ['-C', SOURCE_REPO_PATH, 'check-ignore', '-q', absFile]);
+            return true;
+          } catch {
+            return false;
+          }
+        })();
+        if (ignored) continue;
+        pointer = await fs.readFile(absFile, 'utf8').catch(() => '');
       }
+      const oidMatch = pointer.match(/^oid sha256:([0-9a-f]{64})$/m);
+      if (!oidMatch) throw new Error(`No LFS OID found for ${gitObjectPath} — ensure the file is tracked by git-lfs`);
+      // Append the original filename so browsers save the file with the right name.
+      const url = `${lfsWorkerUrl}/objects/${oidMatch[1]}/${encodeURIComponent(path.basename(relPath))}`;
       saves.push({ name: path.basename(rel), path: relPath, url });
       continue;
     }
@@ -158,7 +170,9 @@ async function syncBenchmark(entry, githubBase, rawBase, lfsWorkerUrl) {
       const raw = await fs.readFile(absFile, 'utf8');
       ({ factorioVersion, platform } = parseReadmeMeta(raw));
       const rawGithubDir = `${rawBase}/${entry.source}`;
-      const rewritten = rewriteMarkdownAssetPaths(raw, entry.slug, rawGithubDir);
+      const stripped = stripOwnToc(raw);
+      const linkRewrites = planLinkRewrites(stripped, entry.source, treeBase, lfsWorkerUrl, headReader);
+      const rewritten = rewriteMarkdownAssetPaths(stripped, entry.slug, rawGithubDir, linkRewrites);
       await fs.writeFile(path.join(outMdDir, 'README.md'), rewritten);
       continue;
     }
@@ -183,8 +197,8 @@ async function syncBenchmark(entry, githubBase, rawBase, lfsWorkerUrl) {
     ...entry,
     factorioVersion,
     platform,
-    githubUrl: `${githubBase}/tree/${'master'}/${entry.source}`,
-    readmeGithubUrl: `${githubBase}/blob/master/${entry.source}/README.md`,
+    githubUrl: `${githubBase}/tree/${branch}/${entry.source}`,
+    readmeGithubUrl: `${githubBase}/blob/${branch}/${entry.source}/README.md`,
     saves,
     assetCount,
     timeseries,
@@ -264,19 +278,74 @@ async function aggregateBenchmarkChart(entry, srcDir, outMdDir) {
   return true;
 }
 
+/** `[text](path rest)`, not an image. */
+const LINK_RE = /(?<!!)\[([^\]]*)\]\(([^)\s"']+)([^)]*)\)/g;
+
+/**
+ * Decide, for every relative `[text](path)` link in a README, whether it needs
+ * something other than the raw GitHub URL: a folder (raw GitHub cannot serve one)
+ * gets its `tree` page, and a file that is a git-lfs pointer at HEAD (raw GitHub
+ * would serve the pointer text) gets the LFS worker download URL, like a save.
+ * Everything is looked up in HEAD's git objects, so it does not matter which
+ * files a sparse checkout put on disk. One lookup per README.
+ *
+ * @param {string} markdown
+ * @param {string} source - benchmark folder in the source repo
+ * @param {string} treeBase - `https://github.com/<owner>/<repo>/tree/<branch>`
+ * @param {string|null} lfsWorkerUrl
+ * @param {ReturnType<typeof createHeadReader>} headReader
+ * @returns {Map<string, string>} link target (as written, minus a leading `./`) → URL
+ */
+function planLinkRewrites(markdown, source, treeBase, lfsWorkerUrl, headReader) {
+  /** @type {Map<string, { repoPath: string, suffix: string }>} */
+  const candidates = new Map();
+  for (const m of markdown.matchAll(LINK_RE)) {
+    const trimmed = m[2].trim();
+    if (!trimmed || /^[a-z]+:/i.test(trimmed) || trimmed.startsWith('#') || trimmed.startsWith('/')) continue;
+    const target = trimmed.replace(/^\.\//, '');
+    const suffixAt = target.search(/[?#]/);
+    const rawPath = suffixAt < 0 ? target : target.slice(0, suffixAt);
+    let decoded = rawPath;
+    try {
+      decoded = decodeURIComponent(rawPath);
+    } catch {
+      /* keep as written */
+    }
+    const repoPath = path.posix.normalize(`${source}/${decoded}`).replace(/\/+$/, '');
+    if (!repoPath || repoPath.startsWith('../')) continue;
+    candidates.set(target, { repoPath, suffix: suffixAt < 0 ? '' : target.slice(suffixAt) });
+  }
+  const plan = new Map();
+  if (candidates.size === 0) return plan;
+
+  const found = headReader.classify([...new Set([...candidates.values()].map((c) => c.repoPath))]);
+  for (const [target, { repoPath, suffix }] of candidates) {
+    const hit = found.get(repoPath);
+    if (hit?.kind === 'dir') {
+      plan.set(target, `${treeBase}/${repoPath}${suffix}`);
+    } else if (hit?.kind === 'lfs') {
+      if (!lfsWorkerUrl) throw new Error(`link to ${repoPath} is an LFS file but manifest.lfsWorkerUrl is not set`);
+      plan.set(target, `${lfsWorkerUrl.replace(/\/+$/, '')}/objects/${hit.oid}/${encodeURIComponent(path.posix.basename(repoPath))}`);
+    }
+  }
+  return plan;
+}
+
 /**
  * Rewrite markdown asset references so they point at /benchmarks/<slug>/...
  * Handles ![alt](path), <img src="path">, and any href that starts with `./`.
  * Leaves absolute URLs (http://, https://, /), anchors (#), and `mailto:` alone.
  *
  * Regular hyperlinks [text](relative-path) are rewritten to the raw GitHub URL
- * so that files not served from the site (e.g. .txt, .zip) download from GitHub.
+ * so that files not served from the site (e.g. .txt) download from GitHub. A link
+ * with an entry in `linkRewrites` (see planLinkRewrites) uses that URL instead.
  *
  * @param {string} markdown
  * @param {string} slug
  * @param {string|null} [githubRawDir] - raw GitHub URL prefix for the benchmark source dir
+ * @param {Map<string, string>} [linkRewrites] - relative link target → replacement URL
  */
-function rewriteMarkdownAssetPaths(markdown, slug, githubRawDir = null) {
+function rewriteMarkdownAssetPaths(markdown, slug, githubRawDir = null, linkRewrites = new Map()) {
   const prefix = `/benchmarks/${slug}`;
 
   const rewriteAssetPath = (p) => {
@@ -296,6 +365,8 @@ function rewriteMarkdownAssetPaths(markdown, slug, githubRawDir = null) {
     if (trimmed.startsWith('#')) return trimmed;
     if (trimmed.startsWith('/')) return trimmed;
     const normalized = trimmed.replace(/^\.\//, '');
+    const planned = linkRewrites.get(normalized);
+    if (planned) return planned;
     // Point to raw GitHub so files not copied to the site (e.g. .txt) are reachable.
     if (githubRawDir) return `${githubRawDir}/${normalized}`;
     return `${prefix}/${normalized}`;
@@ -307,7 +378,7 @@ function rewriteMarkdownAssetPaths(markdown, slug, githubRawDir = null) {
   });
 
   // [text](path) — regular hyperlinks (not images) go to GitHub raw
-  out = out.replace(/(?<!!)\[([^\]]*)\]\(([^)\s"']+)([^)]*)\)/g, (_m, text, p, rest) => {
+  out = out.replace(LINK_RE, (_m, text, p, rest) => {
     return `[${text}](${rewriteLinkPath(p)}${rest})`;
   });
 

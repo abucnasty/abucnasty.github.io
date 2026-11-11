@@ -4,14 +4,14 @@ import MenuIcon from '@mui/icons-material/Menu';
 import { NavLink as RouterNavLink, Link as RouterLink } from 'react-router-dom';
 import { SocialLinks } from './SocialLinks';
 import { BrandAvatar } from './BrandAvatar';
+import { layout } from '../layout';
 
 const navItems = [
   { to: '/benchmarks', label: 'Benchmarks' },
-  { to: '/saves', label: 'Saves' },
   { to: '/blueprints', label: 'Blueprints' },
+  { to: '/saves', label: 'Saves' },
   { to: '/tools', label: 'Tools' },
   { to: '/blog', label: 'Blog' },
-  { to: '/about', label: 'About' },
 ];
 
 interface AppShellProps {
@@ -24,7 +24,7 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <AppBar position="sticky" color="default" elevation={0} sx={{ backgroundColor: 'background.paper' }}>
-        <Toolbar sx={{ gap: 2 }}>
+        <Toolbar variant="dense" sx={{ gap: 2, minHeight: layout.topBarHeight }}>
           <Box
             component={RouterLink}
             to="/"
@@ -36,14 +36,14 @@ export function AppShell({ children }: AppShellProps) {
               color: 'inherit',
             }}
           >
-            <BrandAvatar sx={{ width: 36, height: 36, borderWidth: '2px' }} />
+            <BrandAvatar sx={{ width: 28, height: 28, borderWidth: '2px' }} />
             <Typography
               variant="h6"
               sx={{
                 color: 'primary.main',
                 fontWeight: 700,
                 letterSpacing: 1,
-                // With six nav items the wordmark only fits beside them from `md`.
+                // With five nav items the wordmark only fits beside them from `md`.
                 display: { xs: 'none', md: 'block' },
               }}
             >
@@ -76,7 +76,7 @@ export function AppShell({ children }: AppShellProps) {
 
           {/* Mobile hamburger */}
           <IconButton
-            sx={{ display: { xs: 'flex', sm: 'none' } }}
+            sx={{ display: { xs: 'flex', sm: 'none' }, width: layout.touchTarget, height: layout.touchTarget }}
             onClick={() => setDrawerOpen(true)}
             aria-label="Open menu"
             edge="end"
@@ -115,7 +115,7 @@ export function AppShell({ children }: AppShellProps) {
         </List>
       </Drawer>
 
-      <Container component="main" maxWidth="lg" sx={{ flexGrow: 1, py: 4 }}>
+      <Container component="main" maxWidth="lg" sx={{ flexGrow: 1, py: 3 }}>
         {children}
       </Container>
 
@@ -128,9 +128,19 @@ export function AppShell({ children }: AppShellProps) {
         }}
       >
         <Container maxWidth="lg" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            © {new Date().getFullYear()} abucnasty
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: 2 }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              © {new Date().getFullYear()} abucnasty
+            </Typography>
+            <Typography
+              variant="body2"
+              component={RouterLink}
+              to="/about"
+              sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { color: 'primary.main' } }}
+            >
+              About
+            </Typography>
+          </Box>
           <SocialLinks />
         </Container>
       </Box>

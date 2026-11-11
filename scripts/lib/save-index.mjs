@@ -68,14 +68,11 @@ export function buildSaveIndex({ repoPath, lfsWorkerUrl, benchmarks, log = () =>
   /** @type {SaveFile[]} */
   const files = zips
     .map((z) => {
-      const blob = blobs.get(z.oid);
-      const pointer = blob && blob.length <= MAX_POINTER_BYTES ? blob.toString('utf8') : '';
-      const oid = pointer.match(/^oid sha256:([0-9a-f]{64})$/m);
-      const size = pointer.match(/^size (\d+)$/m);
-      if (!oid || !size) {
+      const pointer = parseLfsPointer(blobs.get(z.oid));
+      if (!pointer) {
         throw new Error(`save index: no LFS OID found for ${z.path} — ensure the file is tracked by git-lfs`);
       }
-      return /** @type {SaveFile} */ ([z.path, Number(size[1]), oid[1]]);
+      return /** @type {SaveFile} */ ([z.path, pointer.size, pointer.oid]);
     })
     .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
 
@@ -106,6 +103,71 @@ export function buildSaveIndex({ repoPath, lfsWorkerUrl, benchmarks, log = () =>
       ')',
   );
   return { lfsWorkerUrl: lfsWorkerUrl.replace(/\/+$/, ''), files, meta };
+}
+
+/**
+ * The sha256 object id and size inside a git-lfs pointer blob, or null when the
+ * blob is not a pointer (a real file, too large to be one, or missing).
+ *
+ * @param {Buffer | undefined} blob
+ * @returns {{ oid: string, size: number } | null}
+ */
+export function parseLfsPointer(blob) {
+  if (!blob || blob.length > MAX_POINTER_BYTES) return null;
+  const text = blob.toString('utf8');
+  const oid = text.match(/^oid sha256:([0-9a-f]{64})$/m);
+  const size = text.match(/^size (\d+)$/m);
+  return oid && size ? { oid: oid[1], size: Number(size[1]) } : null;
+}
+
+/**
+ * Looks up paths in HEAD of the source repo: is each a folder, a git-lfs
+ * pointer, an ordinary file, or absent. Same object-reading rules as the save
+ * index (works in sparse and partial clones, ignores the working tree).
+ * The tree is listed once; each `classify` call costs one `git cat-file` at
+ * most, and none when no path is a file.
+ *
+ * @param {string} repoPath
+ */
+export function createHeadReader(repoPath) {
+  /** @type {Map<string, string> | undefined} */
+  let blobOids;
+  /** @type {Set<string> | undefined} */
+  let dirs;
+  const load = () => {
+    if (blobOids && dirs) return { blobOids, dirs };
+    blobOids = new Map();
+    dirs = new Set();
+    for (const { path: p, oid } of listHeadTree(repoPath)) {
+      blobOids.set(p, oid);
+      const parts = p.split('/');
+      for (let i = 1; i < parts.length; i++) dirs.add(parts.slice(0, i).join('/'));
+    }
+    return { blobOids, dirs };
+  };
+
+  return {
+    /**
+     * @param {string[]} paths  Repo-relative, no trailing slash.
+     * @returns {Map<string, { kind: 'dir' } | { kind: 'file' } | { kind: 'lfs', oid: string, size: number }>}
+     */
+    classify(paths) {
+      const { blobOids, dirs } = load();
+      const result = new Map();
+      const files = [];
+      for (const p of paths) {
+        if (dirs.has(p)) result.set(p, { kind: 'dir' });
+        else if (blobOids.has(p)) files.push(p);
+      }
+      const oids = [...new Set(files.map((p) => blobOids.get(p)))];
+      const blobs = oids.length ? readBlobs(repoPath, oids) : new Map();
+      for (const p of files) {
+        const pointer = parseLfsPointer(blobs.get(blobOids.get(p)));
+        result.set(p, pointer ? { kind: 'lfs', ...pointer } : { kind: 'file' });
+      }
+      return result;
+    },
+  };
 }
 
 /** @param {string} filePath */
