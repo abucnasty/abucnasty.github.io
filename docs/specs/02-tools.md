@@ -68,7 +68,7 @@ Mapping from today's fields: a tool's `url` becomes a `github` link labelled "Gi
 
 ## Checks (`tools.cjs`)
 
-- The set of outbound link URLs on the page equals the set in `toolSections` + `tutorials` (read them by parsing `src/data/tools.ts` for `url:` values).
+- The set of outbound link URLs on the page equals the set in `toolSections` + `tutorials`. Read them by parsing `src/data/tools.ts` for `url:` values; this replaces the hard-coded URL list the module has today.
 - Desktop: every `[data-row]` is above the fold; the count equals entries + tutorials.
 - Desktop: page height is at most one window (800 px).
 - Phone: every link button is at least 44 px in both directions.

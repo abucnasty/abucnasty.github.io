@@ -14,6 +14,20 @@ title repeated in the sidebar.
 - `scripts/lib/strip-toc.mjs` (new)
 - `scripts/sync-content.mjs`: only the one call described below
 - `scripts/check/pages/benchmark-detail.cjs`
+- `src/components/MarkdownRenderer.tsx`: only if the phone overflow fix below needs it
+
+## Fix: benchmark pages scroll sideways on phones
+
+The check script found that benchmark pages are wider than a phone screen today
+(85 px on `2026-11-02-inserter-update-order`, 112 px on `2026-01-25-linux-vs-windows`).
+`benchmark-detail.cjs` carries a `knownIssues` entry for it.
+
+Find the cause and fix it so wide README content (tables, code blocks, images) scrolls
+inside its own box and the page itself never scrolls sideways. A likely cause, to confirm
+rather than assume: the page grid's single column on `xs` is `1fr`, which cannot shrink
+below its content's minimum width, where `minmax(0, 1fr)` can.
+
+Then delete the `knownIssues` entry so the sideways-scroll rule is enforced on these pages.
 
 ## Sync: drop the README's own contents list
 
@@ -69,7 +83,7 @@ Everything else stays: the tabs, the charts, the Save files tab with its link to
 - The `h1` is 28 px.
 - For a benchmark with a version: a chip reads `Factorio <version>`. For one with saves: the chip links to `/saves/<source>` and shows `saves.length`. For one with charts: clicking "Interactive charts" shows the charts tab.
 - Desktop: the first element of the README body starts above y = 330.
-- Phone: no sideways scroll; chips wrap.
+- Phone: no sideways scroll on any tested benchmark page, with no `knownIssues` entry left in the module; chips wrap.
 
 Pick the benchmarks to test from `data.index` (first with `timeseries`, first with saves, and the slug `2026-01-25-linux-vs-windows` when it exists).
 

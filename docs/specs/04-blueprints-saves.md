@@ -25,6 +25,7 @@ do not move `BlueprintRow` or the save rows onto `ListRow`.
 - Parent groups ("Megabasing", "General"): replace the hand-built overline with `SectionHeader label={parent}`.
 - Each category's rows go inside `RowGroup` (replaces the `Box` with the paper background and top border).
 - "Source on GitHub" button: `size="small"`.
+- The switch has no accessible name today: its `inputProps` `aria-label` does not reach the `<input>`. Give it one that does ("Show deprecated blueprints"), and change `blueprints.cjs` to find the switch by role and name instead of `main input[role="switch"]`.
 
 `BlueprintRow.tsx`
 - Row: `minHeight: { xs: layout.touchTarget, md: layout.rowHeight }`, `py: { xs: 0.5, md: 0.25 }`.

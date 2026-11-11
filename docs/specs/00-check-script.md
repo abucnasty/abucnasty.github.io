@@ -53,6 +53,13 @@ module.exports = {
 | `aboveFold(page, selector)` | Number of elements matching `selector` that lie fully inside the window without scrolling. |
 | `box(page, selector)` | `{ x, y, width, height }` of the first match, rounded, or `null`. |
 | `shot(page, name)` | With `--shots`, saves `check-output/<name>.png` at device scale 2. A no-op otherwise. |
+| `goto(page, path)` | Full navigation of a page that is already open, with the same automatic checks as `open`. |
+| `requests(page)` | URLs the page has requested so far. |
+| `base` | Origin of the preview server. |
+
+A page module may also export `knownIssues: [{ match, why }]`. A failing assertion whose
+label contains `match` prints `KNOWN` and does not fail the run. It exists for a defect
+that is already on `main` and that a named later package fixes; that package deletes the entry.
 
 Checks the runner applies to **every** page it opens, without the page module asking:
 
