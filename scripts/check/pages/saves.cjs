@@ -73,7 +73,7 @@ function chainEnd(folder) {
 
 module.exports = {
   name: 'saves',
-  async run({ open, goto, expect, requests, data, shot }) {
+  async run({ open, goto, expect, requests, data, shot, box, aboveFold }) {
     const { saves, index } = data;
     const meta = saves.meta;
     const { root, all, byPath } = buildTree(saves);
@@ -166,6 +166,10 @@ module.exports = {
     }
     const perRow = shown.flatMap((s) => s.rows).map((t) => Number((t.match(/(\d+) saves?/) || [])[1]));
     expect('per-folder save counts add up to the total', perRow.reduce((a, b) => a + b, 0) === root.count, `${perRow.reduce((a, b) => a + b, 0)} vs ${root.count}`);
+    const landingRowH = (await box(page, rowsSel))?.height ?? 0;
+    expect('desktop landing: folder row is at most 36 px tall', landingRowH > 0 && landingRowH <= 36, `${landingRowH} px`);
+    const landingAbove = await aboveFold(page, rowsSel);
+    expect('desktop landing: at least 15 folder rows above the fold', landingAbove >= 15, `${landingAbove} rows above the fold`);
 
     const lead = (f) => `${meta[f.path]?.benchmark_date ?? '—'} ${rowLabel(f)}`;
     const s0 = sections[0];
@@ -245,6 +249,9 @@ module.exports = {
     expect('deep link: file rows and header card', (await page.$$(fileRowsSel)).length === chain.folder.files.length && (await page.isVisible(cardSel)));
     const fileText = squash(await page.$eval(`main div:has(> a[aria-label="Download ${firstFile.name}"])`, (d) => d.innerText));
     expect('file row: name and size', fileText === `${firstFile.name} ${formatBytes(firstFile.bytes)}`, fileText);
+    const fileRowH = (await box(page, `main div:has(> a[aria-label="Download ${firstFile.name}"])`))?.height ?? 0;
+    expect('desktop folder view: file row is at most 38 px tall', fileRowH > 0 && fileRowH <= 38, `${fileRowH} px`);
+    await shot(page, 'saves-folder-desktop');
     const bulkWant = `git lfs pull --include="${chain.folder.path}/**"`;
     const bulk = await page.innerText('main code');
     expect('bulk download command', bulk === bulkWant, bulk);
@@ -390,6 +397,9 @@ module.exports = {
     expect('phone: copy-link button hidden, download button visible', !(await phone.isVisible('main button[aria-label^="Copy download link"]')) && (await phone.isVisible(`main a[aria-label="Download ${firstFile.name}"]`)));
     const t = squash(await phone.$eval(`main div:has(> a[aria-label="Download ${firstFile.name}"])`, (d) => d.innerText));
     expect('phone: size folds under the file name', t === `${firstFile.name} ${formatBytes(firstFile.bytes)}`, t);
+    const dl = await box(phone, `main a[aria-label="Download ${firstFile.name}"]`);
+    expect('phone: download button is at least 44 × 44 px', Boolean(dl) && dl.width >= 44 && dl.height >= 44, JSON.stringify(dl));
+    await shot(phone, 'saves-folder-phone');
     expect('phone: search placeholder is the short one', (await phone.getAttribute(search, 'placeholder')) === 'Search saves');
     await phone.click('button[aria-label="Open menu"]');
     await phone.click('.MuiDrawer-root a[href="/saves"]');

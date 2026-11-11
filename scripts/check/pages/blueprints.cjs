@@ -1,22 +1,36 @@
 module.exports = {
   name: 'blueprints',
-  async run({ open, expect, data, shot }) {
+  async run({ open, expect, data, shot, box, aboveFold }) {
     const entries = data.blueprints.categories.flatMap((c) => c.entries);
     const active = entries.filter((e) => !e.deprecated).length;
 
     // Every row carries its description as a title attribute (for the truncated text).
     const rows = (page) => page.locator('main [title]').count();
-    // The Switch's aria-label does not reach its <input> (MUI 7 ignores `inputProps` here), so select by role.
-    const toggle = 'main input[role="switch"]';
+    // A row is the element holding the description <p>, two levels up from it.
+    const rowSel = 'main div:has(> div > p[title])';
+    // Found by its accessible name (the aria-label reaches the <input> through slotProps).
+    const toggle = (page) => page.getByRole('switch', { name: 'Show deprecated blueprints' });
 
     for (const viewport of ['desktop', 'phone']) {
       const page = await open('/blueprints', viewport);
       await shot(page, `blueprints-${viewport}`);
       expect(`${viewport}: one row per non-deprecated entry`, (await rows(page)) === active, `${await rows(page)} rows, ${active} entries`);
-      expect(`${viewport}: deprecated switch is off by default`, !(await page.locator(toggle).isChecked()));
-      await page.locator(toggle).click();
+      const rowEls = await page.locator(rowSel).count();
+      expect(`${viewport}: row selector matches one element per row`, rowEls === active, `${rowEls} elements, ${active} entries`);
+      const heights = await page.$$eval(rowSel, (els) => els.map((el) => el.getBoundingClientRect().height));
+      if (viewport === 'desktop') {
+        const h = (await box(page, rowSel))?.height ?? 0;
+        expect('desktop: blueprint row is at most 36 px tall', h > 0 && h <= 36, `${h} px`);
+        const above = await aboveFold(page, rowSel);
+        expect('desktop: at least 13 blueprint rows above the fold', above >= 13, `${above} rows above the fold`);
+      } else {
+        const min = Math.min(...heights);
+        expect('phone: every blueprint row is at least 44 px tall', heights.length > 0 && min >= 44, `shortest ${min} px`);
+      }
+      expect(`${viewport}: deprecated switch is off by default`, !(await toggle(page).isChecked()));
+      await toggle(page).click();
       expect(`${viewport}: deprecated switch reveals the rest`, (await rows(page)) === entries.length, `${await rows(page)} rows, ${entries.length} entries`);
-      await page.locator(toggle).click();
+      await toggle(page).click();
       expect(`${viewport}: switching off hides them again`, (await rows(page)) === active);
     }
   },

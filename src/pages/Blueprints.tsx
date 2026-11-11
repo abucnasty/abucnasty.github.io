@@ -3,6 +3,10 @@ import { Box, Button, Chip, Stack, Switch, Typography } from '@mui/material';
 import blueprints from '../generated/blueprints.json';
 import type { BlueprintIndex } from '../content';
 import { BlueprintRow } from '../components/BlueprintRow';
+import { PageHeader } from '../components/PageHeader';
+import { SectionHeader } from '../components/SectionHeader';
+import { RowGroup } from '../components/ListRow';
+import { layout } from '../layout';
 
 const data = blueprints as BlueprintIndex;
 
@@ -29,42 +33,28 @@ export function Blueprints() {
   );
 
   return (
-    <Stack spacing={{ xs: 2, sm: 3 }}>
-      <Box>
-        <Typography variant="h3">Blueprints</Typography>
-        <Typography variant="body1" sx={{ color: 'text.secondary', mt: 1 }}>
-          {totalActive} active blueprints across {data.categories.length} categories.
-        </Typography>
-      </Box>
-
-      <Stack direction="row" spacing={{ xs: 1, sm: 2 }} alignItems="center">
-        <Switch
-          checked={showDeprecated}
-          onChange={(_, v) => setShowDeprecated(v)}
-          inputProps={{ 'aria-label': 'Show deprecated blueprints' }}
-        />
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Show deprecated ({totalDeprecated})
-        </Typography>
-      </Stack>
+    <Stack spacing={2}>
+      <PageHeader
+        title="Blueprints"
+        meta={`${totalActive} active blueprints across ${data.categories.length} categories.`}
+        actions={
+          <Stack direction="row" spacing={{ xs: 1, sm: 2 }} alignItems="center">
+            <Switch
+              size="small"
+              checked={showDeprecated}
+              onChange={(_, v) => setShowDeprecated(v)}
+              slotProps={{ input: { 'aria-label': 'Show deprecated blueprints' } }}
+            />
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              Show deprecated ({totalDeprecated})
+            </Typography>
+          </Stack>
+        }
+      />
 
       {grouped.map(([parent, cats]) => (
-        <Box key={parent}>
-          <Typography
-            variant="overline"
-            sx={{
-              display: 'block',
-              color: 'primary.main',
-              borderBottom: '1px solid',
-              borderColor: 'primary.main',
-              pb: 0.5,
-              mb: 1.5,
-              letterSpacing: 1,
-              fontSize: 12,
-            }}
-          >
-            {parent}
-          </Typography>
+        <Stack key={parent} spacing={1.5}>
+          <SectionHeader label={parent} />
           <Stack spacing={{ xs: 1.25, sm: 2 }}>
             {cats.map((cat) => {
               const entries = showDeprecated
@@ -97,22 +87,16 @@ export function Blueprints() {
                       sx={{ height: { xs: 16, sm: 18 }, fontSize: { xs: 10, sm: 11 } }}
                     />
                   </Stack>
-                  <Box
-                    sx={{
-                      borderTop: 1,
-                      borderColor: 'divider',
-                      backgroundColor: 'background.paper',
-                    }}
-                  >
+                  <RowGroup>
                     {entries.map((entry, i) => (
                       <BlueprintRow key={`${cat.id}-${i}`} entry={entry} />
                     ))}
-                  </Box>
+                  </RowGroup>
                 </Box>
               );
             })}
           </Stack>
-        </Box>
+        </Stack>
       ))}
 
       <Button
@@ -121,7 +105,8 @@ export function Blueprints() {
         target="_blank"
         rel="noopener noreferrer"
         variant="outlined"
-        sx={{ alignSelf: 'flex-start' }}
+        size="small"
+        sx={{ alignSelf: 'flex-start', minHeight: { xs: layout.touchTarget } }}
       >
         Source on GitHub
       </Button>

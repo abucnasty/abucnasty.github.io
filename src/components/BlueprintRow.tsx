@@ -13,6 +13,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import YouTubeIcon from '@mui/icons-material/YouTube';
 import ImageIcon from '@mui/icons-material/Image';
 import type { BlueprintEntry } from '../content';
+import { layout } from '../layout';
 
 interface BlueprintRowProps {
   entry: BlueprintEntry;
@@ -29,7 +30,8 @@ export function BlueprintRow({ entry }: BlueprintRowProps) {
       spacing={{ xs: 1, sm: 1.5 }}
       alignItems="center"
       sx={{
-        py: { xs: 0.65, sm: 1 },
+        minHeight: { xs: layout.touchTarget, md: layout.rowHeight },
+        py: { xs: 0.5, md: 0.25 },
         px: { xs: 0.75, sm: 1 },
         borderBottom: 1,
         borderColor: 'divider',
@@ -44,8 +46,8 @@ export function BlueprintRow({ entry }: BlueprintRowProps) {
         onMouseEnter={() => previewUrl && setOpen(true)}
         onMouseLeave={() => setOpen(false)}
         sx={{
-          width: { xs: 44, sm: 56 },
-          height: { xs: 26, sm: 32 },
+          width: { xs: 44, md: 46 },
+          height: 26,
           flexShrink: 0,
           backgroundColor: 'common.black',
           display: 'flex',
