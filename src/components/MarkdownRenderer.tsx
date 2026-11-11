@@ -16,6 +16,9 @@ export function MarkdownRenderer({ source }: MarkdownRendererProps) {
   return (
     <Box
       sx={{
+        // Long URLs and inline code would otherwise push the page sideways on phones.
+        overflowWrap: 'anywhere',
+        '& pre, & table': { overflowWrap: 'normal' },
         '& h1, & h2, & h3, & h4': { color: 'text.primary', mt: 4, mb: 2 },
         '& h1': { fontSize: '2rem', borderBottom: '2px solid', borderColor: 'primary.main', pb: 1 },
         '& h2': { fontSize: '1.5rem' },

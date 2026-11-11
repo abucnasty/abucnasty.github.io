@@ -25,6 +25,7 @@ import dotenv from 'dotenv';
 import { parseBlueprintsMarkdown } from './parse-blueprints.mjs';
 import { aggregateScenarioCsv } from './lib/aggregate.mjs';
 import { parseReadmeMeta } from './lib/readme-meta.mjs';
+import { stripOwnToc } from './lib/strip-toc.mjs';
 import { buildSaveIndex } from './lib/save-index.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -166,7 +167,7 @@ async function syncBenchmark(entry, githubBase, rawBase, lfsWorkerUrl) {
       const raw = await fs.readFile(absFile, 'utf8');
       ({ factorioVersion, platform } = parseReadmeMeta(raw));
       const rawGithubDir = `${rawBase}/${entry.source}`;
-      const rewritten = rewriteMarkdownAssetPaths(raw, entry.slug, rawGithubDir);
+      const rewritten = rewriteMarkdownAssetPaths(stripOwnToc(raw), entry.slug, rawGithubDir);
       await fs.writeFile(path.join(outMdDir, 'README.md'), rewritten);
       continue;
     }

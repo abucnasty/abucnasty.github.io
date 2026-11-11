@@ -20,6 +20,9 @@ import type { ContentIndex } from '../content';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { BenchmarkCharts } from '../components/BenchmarkCharts';
 import { TableOfContents } from '../components/TableOfContents';
+import { PageHeader } from '../components/PageHeader';
+import { layout } from '../layout';
+import { formatPlatform } from '../format';
 import { saveFolderRoute } from '../saves';
 
 const content = index as ContentIndex;
@@ -82,23 +85,45 @@ export function BenchmarkDetail() {
     <Box
       sx={{
         display: 'grid',
-        gap: 4,
-        gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) 280px' },
+        gap: 3,
+        gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 260px' },
         alignItems: 'flex-start',
       }}
     >
       <Box sx={{ minWidth: 0 }}>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         <Box sx={{ mb: hasTabs ? 2 : 3 }}>
-          <Typography
-            variant="overline"
-            sx={{ color: 'primary.main', letterSpacing: 2, display: 'block' }}
-          >
-            {benchmark.date ?? 'Benchmark'}
-          </Typography>
-          <Typography variant="h3" sx={{ mt: 0.5, lineHeight: 1.15 }}>
-            {benchmark.title}
-          </Typography>
+          <PageHeader overline={benchmark.date ?? 'Benchmark'} title={benchmark.title} />
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+            {benchmark.factorioVersion && (
+              <Chip size="small" variant="outlined" label={`Factorio ${benchmark.factorioVersion}`} />
+            )}
+            {benchmark.platform && (
+              <Chip size="small" variant="outlined" label={formatPlatform(benchmark.platform)} />
+            )}
+            {hasSaves && (
+              <Chip
+                size="small"
+                variant="outlined"
+                component={RouterLink}
+                to={saveFolderRoute(benchmark.source)}
+                clickable
+                label={`${benchmark.saves.length} save files`}
+              />
+            )}
+            {hasCharts && (
+              <Chip
+                size="small"
+                variant="outlined"
+                clickable
+                onClick={() => setTab('charts')}
+                label="Interactive charts"
+              />
+            )}
+            {benchmark.tags?.map((t) => (
+              <Chip key={t} label={t} size="small" variant="outlined" />
+            ))}
+          </Box>
         </Box>
         {hasTabs ? (
           <>
@@ -169,27 +194,14 @@ export function BenchmarkDetail() {
       <Box
         sx={{
           position: { md: 'sticky' },
-          top: { md: 88 },
+          top: { md: layout.topBarHeight + 24 },
           backgroundColor: 'background.paper',
-          p: 3,
+          p: 2,
           display: 'flex',
           flexDirection: 'column',
           gap: 0,
         }}
       >
-        <Typography variant="overline" sx={{ color: 'primary.main' }}>
-          {benchmark.date ?? 'Benchmark'}
-        </Typography>
-        <Typography variant="h6" sx={{ mt: 0.5, mb: 2 }}>
-          {benchmark.title}
-        </Typography>
-        {benchmark.tags && benchmark.tags.length > 0 && (
-          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1, mb: 2 }}>
-            {benchmark.tags.map((t) => (
-              <Chip key={t} label={t} size="small" variant="outlined" />
-            ))}
-          </Stack>
-        )}
         <Button
           component="a"
           href={benchmark.readmeGithubUrl}
