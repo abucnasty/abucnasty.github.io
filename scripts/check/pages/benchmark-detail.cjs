@@ -374,5 +374,214 @@ module.exports = {
       const top = await page.evaluate((i) => document.getElementById(i)?.getBoundingClientRect().top ?? null, id);
       expect(`${b.slug}: sidebar link scrolls to its heading`, top !== null && top >= -5 && top < 300, `top=${top}`);
     }
+
+    // --- related links: sidebar blocks, older / newer ----------------------------------------
+    const all = data.index.benchmarks;
+    const topicsById = new Map(data.index.topics.map((t) => [t.id, t]));
+    const catName = new Map(data.blueprints.categories.map((c) => [c.id, c.name]));
+    const order = new Map(all.map((b, i) => [b.slug, i]));
+    // Oldest first; a shared date keeps manifest order.
+    const dateOrder = all
+      .filter((b) => b.date)
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : order.get(a.slug) - order.get(b.slug)));
+    // Dated newest first (a shared date keeps manifest order), then undated in manifest order.
+    const expectedMore = (b) => {
+      const others = all.filter((x) => x.topic === b.topic && x.slug !== b.slug);
+      const dated = others
+        .filter((x) => x.date)
+        .sort((x, y) => (x.date < y.date ? 1 : x.date > y.date ? -1 : order.get(x.slug) - order.get(y.slug)));
+      return { list: [...dated, ...others.filter((x) => !x.date)], all: others.length };
+    };
+
+    // The sidebar's link groups: heading text and links.
+    const groups = (page) =>
+      page.evaluate(() =>
+        [...document.querySelectorAll('main [role="group"][aria-labelledby]')].map((g) => ({
+          heading: document.getElementById(g.getAttribute('aria-labelledby')).textContent.trim(),
+          links: [...g.querySelectorAll('a')].map((a) => [a.getAttribute('href'), a.textContent.trim()]),
+        })),
+      );
+    const olderNewer = (page) =>
+      page.evaluate(() => {
+        const g = document.querySelector('main [role="group"][aria-label="Older and newer benchmarks"]');
+        return g ? [...g.querySelectorAll('a')].map((a) => [a.getAttribute('href'), a.textContent.trim(), Math.round(a.getBoundingClientRect().height)]) : null;
+      });
+
+    const mappedTopic = data.index.topics.find((t) => (t.blueprintCategories ?? []).length > 0);
+    const bigTopic = data.index.topics.find((t) => t.count > 6);
+    const smallTopic = data.index.topics.find((t) => t.count >= 2 && t.count <= 6);
+    const pick = (t) => all.find((b) => b.topic === t.id);
+
+    if (withSaves) {
+      const page = await open(`/benchmarks/${withSaves.slug}`, 'desktop');
+      await page.waitForSelector('main h1', { timeout: 10000 });
+      const gw = (await groups(page)).find((g) => g.heading === 'Goes with this');
+      const want = [`/saves/${withSaves.source.split('/').map(encodeURIComponent).join('/')}`, `${withSaves.saves.length} save files`];
+      expect(
+        `${withSaves.slug}: "Goes with this" links to its save files`,
+        gw && gw.links.some(([h, t]) => h === want[0] && t === want[1]),
+        JSON.stringify(gw),
+      );
+    }
+
+    if (mappedTopic) {
+      const b = pick(mappedTopic);
+      const page = await open(`/benchmarks/${b.slug}`, 'desktop');
+      await page.waitForSelector('main h1', { timeout: 10000 });
+      const gw = (await groups(page)).find((g) => g.heading === 'Goes with this');
+      const bp = (gw?.links ?? []).filter(([h]) => h.startsWith('/blueprints#'));
+      const wantBp = mappedTopic.blueprintCategories.map((id) => [`/blueprints#${id}`, `${catName.get(id)} blueprints`]);
+      expect(`${b.slug}: one blueprint link per mapped category, in order`, JSON.stringify(bp) === JSON.stringify(wantBp), `${JSON.stringify(bp)} vs ${JSON.stringify(wantBp)}`);
+    }
+
+    // A benchmark with neither saves nor mapped blueprints has no "Goes with this".
+    const bare = all.find((b) => b.saves.length === 0 && (topicsById.get(b.topic)?.blueprintCategories ?? []).length === 0);
+    if (bare) {
+      const page = await open(`/benchmarks/${bare.slug}`, 'desktop');
+      await page.waitForSelector('main h1', { timeout: 10000 });
+      expect(`${bare.slug}: no "Goes with this" block`, !(await groups(page)).some((g) => g.heading === 'Goes with this'));
+    }
+
+    const moreCases = [];
+    if (bigTopic) {
+      moreCases.push(pick(bigTopic));
+      // A dated one whose topic also has undated members, if there is one.
+      const withUndated = all.find((b) => b.topic === bigTopic.id && b.date && all.some((x) => x.topic === b.topic && !x.date));
+      if (withUndated) moreCases.push(withUndated);
+    }
+    for (const t of data.index.topics) {
+      if (t.count >= 2 && t.count <= 6) moreCases.push(pick(t));
+    }
+    for (const b of moreCases) {
+      const t = topicsById.get(b.topic);
+      const exp = expectedMore(b);
+      const page = await open(`/benchmarks/${b.slug}`, 'desktop');
+      await page.waitForSelector('main h1', { timeout: 10000 });
+      const more = (await groups(page)).find((g) => g.heading === `More in ${t.label}`);
+      const titles = (more?.links ?? []).filter(([h]) => h.startsWith('/benchmarks/')).map(([, text]) => text);
+      const wantList = exp.list.slice(0, 5);
+      expect(`${b.slug}: "More in ${t.label}" lists ${wantList.length} titles in order`, JSON.stringify(titles) === JSON.stringify(wantList.map((x) => x.title)), `${JSON.stringify(titles)} vs ${JSON.stringify(wantList.map((x) => x.title))}`);
+      expect(`${b.slug}: "More in" never lists the page itself`, !titles.includes(b.title));
+      const hrefs = (more?.links ?? []).map(([h]) => h);
+      expect(`${b.slug}: "More in" links go to the benchmark pages`, JSON.stringify(hrefs.filter((h) => h.startsWith('/benchmarks/'))) === JSON.stringify(wantList.map((x) => `/benchmarks/${x.slug}`)), hrefs.join(','));
+      const allLink = (more?.links ?? []).find(([, text]) => /^All \d+$/.test(text));
+      if (exp.all > 5) {
+        expect(
+          `${b.slug}: "More in" ends with "All ${t.count}" to the topic`,
+          allLink && allLink[0] === `/benchmarks?topic=${t.id}` && allLink[1] === `All ${t.count}` && more.links[more.links.length - 1] === allLink,
+          JSON.stringify(more?.links.slice(-2)),
+        );
+      } else {
+        expect(`${b.slug}: "More in" has no "All" link`, !allLink, JSON.stringify(allLink));
+      }
+    }
+
+    // A benchmark alone in its topic, or without one, has no "More in".
+    const loner = all.find((b) => !b.topic || all.filter((x) => x.topic === b.topic).length === 1);
+    if (loner) {
+      const page = await open(`/benchmarks/${loner.slug}`, 'desktop');
+      await page.waitForSelector('main h1', { timeout: 10000 });
+      expect(`${loner.slug}: no "More in" block`, !(await groups(page)).some((g) => g.heading.startsWith('More in ')));
+    }
+
+    // Older / Newer.
+    const ties = dateOrder.filter((b, i) => dateOrder.some((x, j) => i !== j && x.date === b.date));
+    const mid = dateOrder[Math.floor(dateOrder.length / 2)];
+    const olderNewerCases = [mid, dateOrder[dateOrder.length - 1], dateOrder[0], ...ties.slice(0, 2), ...ties.slice(-2)];
+    const undatedB = all.find((b) => !b.date);
+    for (const b of [...new Set(olderNewerCases)]) {
+      const i = dateOrder.indexOf(b);
+      const page = await open(`/benchmarks/${b.slug}`, 'desktop');
+      await page.waitForSelector('main h1', { timeout: 10000 });
+      const row = (await olderNewer(page)) ?? [];
+      const wantRow = [];
+      if (i > 0) wantRow.push([`/benchmarks/${dateOrder[i - 1].slug}`, `Older: ${dateOrder[i - 1].title}`]);
+      if (i < dateOrder.length - 1) wantRow.push([`/benchmarks/${dateOrder[i + 1].slug}`, `Newer: ${dateOrder[i + 1].title}`]);
+      expect(
+        `${b.slug} (${b.date}, #${i + 1} of ${dateOrder.length}): Older / Newer point at the neighbours`,
+        JSON.stringify(row.map(([h, t]) => [h, t])) === JSON.stringify(wantRow),
+        `${JSON.stringify(row)} vs ${JSON.stringify(wantRow)}`,
+      );
+    }
+    if (undatedB) {
+      const page = await open(`/benchmarks/${undatedB.slug}`, 'desktop');
+      await page.waitForSelector('main h1', { timeout: 10000 });
+      expect(`${undatedB.slug} (undated): no Older / Newer row`, (await olderNewer(page)) === null);
+    }
+
+    // The sidebar blocks and the row show on every tab; the contents list does not.
+    const relTabbed = all.find((b) => b.saves.length > 0 && b.timeseries) ?? withSaves;
+    if (relTabbed) {
+      const page = await open(`/benchmarks/${relTabbed.slug}`, 'desktop');
+      await page.waitForSelector('main h1', { timeout: 10000 });
+      const tabs = ['Save files', ...(relTabbed.timeseries ? ['Interactive metrics'] : [])];
+      for (const tab of tabs) {
+        await page.getByRole('tab', { name: tab }).click();
+        const g = await groups(page);
+        expect(`${relTabbed.slug}: "${tab}" tab still shows the sidebar blocks`, g.some((x) => x.heading === 'Goes with this') && g.some((x) => x.heading.startsWith('More in ')), JSON.stringify(g.map((x) => x.heading)));
+        expect(`${relTabbed.slug}: "${tab}" tab hides the contents list`, (await page.getByText('On this page').count()) === 0);
+        if (dateOrder.includes(relTabbed)) expect(`${relTabbed.slug}: "${tab}" tab still shows Older / Newer`, (await olderNewer(page)) !== null);
+      }
+    }
+
+    // Sidebar against the window, scrolled half-way down a long writeup.
+    const longOnes = ['2026-01-25-linux-vs-windows', '2026-11-02-inserter-update-order']
+      .map((s) => all.find((b) => b.source.endsWith(s)))
+      .filter(Boolean);
+    expect('the two long writeups are in the index', longOnes.length === 2, longOnes.map((b) => b.slug).join(','));
+    // The fullest sidebar: saves, every mapped blueprint category and a topic with more than five others.
+    const fullest = all.find((b) => b.saves.length > 0 && mappedTopic && b.topic === mappedTopic.id);
+    if (fullest) longOnes.push(fullest);
+    for (const b of longOnes) {
+      for (const height of [800, 600]) {
+        const page = await open(`/benchmarks/${b.slug}`, 'desktop');
+        await page.waitForSelector('main nav:not([aria-label="Breadcrumb"]) a', { timeout: 10000 });
+        await page.setViewportSize({ width: 1280, height });
+        await page.evaluate(() => window.scrollTo(0, (document.documentElement.scrollHeight - window.innerHeight) / 2));
+        await page.waitForTimeout(400);
+        const m = await page.getByRole('link', { name: 'View on GitHub' }).evaluate((el) => {
+          const side = el.parentElement;
+          const r = side.getBoundingClientRect();
+          const toc = side.querySelector('nav');
+          return {
+            top: Math.round(r.top),
+            bottom: Math.round(r.bottom),
+            height: Math.round(r.height),
+            win: window.innerHeight,
+            hidden: side.scrollHeight - side.clientHeight,
+            toc: toc ? Math.round(toc.getBoundingClientRect().height) : 0,
+            tocNatural: toc ? toc.scrollHeight : 0,
+          };
+        });
+        // Inside the window always. At 800 nothing is cut off; at 600 the two link blocks plus the
+        // 160 px floor of the contents list can be taller than the window, and the sidebar scrolls itself.
+        expect(
+          `${b.slug}: sidebar is inside the ${height} px window half-way down (height ${m.height}, contents ${m.toc}, scrolls ${m.hidden} px)`,
+          m.top >= 0 && m.bottom <= m.win && (height >= 800 ? m.hidden <= 0 : true),
+          JSON.stringify(m),
+        );
+        expect(
+          `${b.slug}: contents list keeps at least 160 px at ${height} px unless it is shorter`,
+          m.toc >= Math.min(160, m.tocNatural),
+          JSON.stringify(m),
+        );
+        if (b === longOnes[0]) await shot(page, `benchmark-sidebar-${height}`);
+      }
+    }
+
+    // Phone: Older and Newer are each a full touch target. Bottom of the page on both sizes.
+    if (mid) {
+      const page = await open(`/benchmarks/${mid.slug}`, 'phone');
+      await page.waitForSelector('main h1', { timeout: 10000 });
+      const row = (await olderNewer(page)) ?? [];
+      expect(`phone: ${mid.slug} shows both links, each at least 44 px tall`, row.length === 2 && row.every(([, , h]) => h >= 44), JSON.stringify(row));
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await shot(page, 'benchmark-bottom-phone');
+      const d = await open(`/benchmarks/${mid.slug}`, 'desktop');
+      await d.waitForSelector('main h1', { timeout: 10000 });
+      await d.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await d.waitForTimeout(300);
+      await shot(d, 'benchmark-bottom-desktop');
+    }
   },
 };

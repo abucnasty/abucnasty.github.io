@@ -104,5 +104,17 @@ module.exports = {
       countsOk,
       (topics ?? []).map((t) => `${t.id}=${t.count}`).join(', '),
     );
+
+    // Blueprint categories named by a topic exist, and each topic carries the field.
+    const categoryIds = new Set(data.blueprints.categories.map((c) => c.id));
+    expect(
+      'every topic has a blueprintCategories array',
+      (topics ?? []).every((t) => Array.isArray(t.blueprintCategories)),
+      (topics ?? []).filter((t) => !Array.isArray(t.blueprintCategories)).map((t) => t.id).join(','),
+    );
+    const unknownCategories = (topics ?? []).flatMap((t) =>
+      (t.blueprintCategories ?? []).filter((id) => !categoryIds.has(id)).map((id) => `${t.id}: ${id}`),
+    );
+    expect('every topic blueprint category is a category in blueprints.json', unknownCategories.length === 0, unknownCategories.join(' | '));
   },
 };

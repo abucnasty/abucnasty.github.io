@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import {
   Alert,
@@ -16,7 +16,8 @@ import {
 import GitHubIcon from '@mui/icons-material/GitHub';
 import DownloadIcon from '@mui/icons-material/Download';
 import index from '../generated/index.json';
-import type { ContentIndex } from '../content';
+import blueprints from '../generated/blueprints.json';
+import type { BenchmarkEntry, BlueprintIndex, ContentIndex } from '../content';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { BenchmarkCharts } from '../components/BenchmarkCharts';
 import { TableOfContents } from '../components/TableOfContents';
@@ -26,6 +27,71 @@ import { formatPlatform } from '../format';
 import { saveFolderRoute } from '../saves';
 
 const content = index as ContentIndex;
+const blueprintCategories = (blueprints as BlueprintIndex).categories;
+
+/** Most other benchmarks of the topic listed in the sidebar. */
+const MORE_IN_TOPIC = 5;
+
+/** Height in px of the sidebar without its contents list, when both link blocks are at full length. */
+const SIDEBAR_FIXED_HEIGHT = 520;
+
+// Dated benchmarks by date, oldest first; the same date keeps manifest order (Array.sort is stable).
+const byDate = content.benchmarks
+  .filter((b) => b.date)
+  .sort((a, b) => (a.date as string).localeCompare(b.date as string));
+
+/**
+ * Up to MORE_IN_TOPIC other benchmarks of the same topic: dated ones newest first, then undated
+ * ones in manifest order. `total` is how many others there are.
+ */
+function moreInTopic(current: BenchmarkEntry): { shown: BenchmarkEntry[]; total: number } {
+  const others = content.benchmarks.filter((b) => b.topic === current.topic && b.slug !== current.slug);
+  const dated = others
+    .filter((b) => b.date)
+    .sort((a, b) => (b.date as string).localeCompare(a.date as string));
+  const undated = others.filter((b) => !b.date);
+  return { shown: [...dated, ...undated].slice(0, MORE_IN_TOPIC), total: others.length };
+}
+
+const sidebarHeading = {
+  color: 'primary.main',
+  letterSpacing: 2,
+  display: 'block',
+  mb: 0.5,
+  fontSize: '0.7rem',
+} as const;
+
+const sidebarLink = {
+  display: 'flex',
+  alignItems: 'center',
+  minHeight: 24,
+  fontSize: 13,
+  lineHeight: 1.35,
+  color: 'text.secondary',
+  '&:hover': { color: 'primary.main' },
+} as const;
+
+const sidebarLinkOneLine = {
+  ...sidebarLink,
+  display: 'block',
+  lineHeight: '24px',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+} as const;
+
+/** The sidebar's link blocks sit under a thin gap from whatever is above them. */
+function SidebarBlock({ heading, children }: { heading: string; children: ReactNode }) {
+  const id = `sidebar-${heading.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  return (
+    <Box component="div" role="group" aria-labelledby={id} sx={{ mt: 1.5 }}>
+      <Typography id={id} variant="overline" sx={sidebarHeading}>
+        {heading}
+      </Typography>
+      <Box sx={{ display: 'flex', flexDirection: 'column' }}>{children}</Box>
+    </Box>
+  );
+}
 
 // Eagerly map slugs → raw markdown loaders. Vite resolves these at build time.
 const readmeModules = import.meta.glob('../generated/benchmarks/*/README.md', {
@@ -134,6 +200,27 @@ export function BenchmarkDetail() {
   }
 
   const showToc = markdown && (tab === 'readme' || !hasTabs);
+
+  // The contents list gives way to the two link blocks on a short window, down to 160 px. The
+  // constant is the sidebar's other content at its fullest: padding, button, rules and both blocks.
+  const tocMaxHeight = `clamp(160px, calc(100vh - ${SIDEBAR_FIXED_HEIGHT}px), 360px)`;
+
+  const goesWith = [
+    ...(hasSaves
+      ? [{ key: 'saves', to: saveFolderRoute(benchmark.source), label: `${benchmark.saves.length} save files` }]
+      : []),
+    ...(topic?.blueprintCategories ?? []).flatMap((id) => {
+      const category = blueprintCategories.find((c) => c.id === id);
+      return category
+        ? [{ key: id, to: `/blueprints#${encodeURIComponent(id)}`, label: `${category.name} blueprints` }]
+        : [];
+    }),
+  ];
+  const more = topic ? moreInTopic(benchmark) : { shown: [], total: 0 };
+
+  const dateIndex = byDate.findIndex((b) => b.slug === benchmark.slug);
+  const older = dateIndex > 0 ? byDate[dateIndex - 1] : undefined;
+  const newer = dateIndex >= 0 && dateIndex < byDate.length - 1 ? byDate[dateIndex + 1] : undefined;
 
   return (
     <Box
@@ -313,12 +400,60 @@ export function BenchmarkDetail() {
             {markdown && <MarkdownRenderer source={markdown} />}
           </>
         )}
+        {(older || newer) && (
+          <Box
+            role="group"
+            aria-label="Older and newer benchmarks"
+            sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between',
+              columnGap: 3,
+              mt: 4,
+              fontSize: 14,
+            }}
+          >
+            {older ? (
+              <Link
+                component={RouterLink}
+                to={`/benchmarks/${older.slug}`}
+                underline="hover"
+                color="text.secondary"
+                sx={{ display: 'flex', alignItems: 'center', minHeight: layout.touchTarget, '&:hover': { color: 'primary.main' } }}
+              >
+                Older: {older.title}
+              </Link>
+            ) : (
+              <span />
+            )}
+            {newer && (
+              <Link
+                component={RouterLink}
+                to={`/benchmarks/${newer.slug}`}
+                underline="hover"
+                color="text.secondary"
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  minHeight: layout.touchTarget,
+                  textAlign: { sm: 'right' },
+                  '&:hover': { color: 'primary.main' },
+                }}
+              >
+                Newer: {newer.title}
+              </Link>
+            )}
+          </Box>
+        )}
       </Box>
 
       <Box
         sx={{
           position: { md: 'sticky' },
           top: { md: layout.topBarHeight + 24 },
+          // Never taller than the window; whatever does not fit scrolls inside.
+          maxHeight: { md: `calc(100vh - ${layout.topBarHeight + 24 + 16}px)` },
+          overflowY: { md: 'auto' },
           backgroundColor: 'background.paper',
           p: 2,
           display: 'flex',
@@ -342,9 +477,46 @@ export function BenchmarkDetail() {
 
         {showToc && (
           <>
-            <Divider sx={{ my: 2 }} />
-            <TableOfContents markdown={markdown} />
+            <Divider sx={{ my: 1.5 }} />
+            <TableOfContents markdown={markdown} maxHeight={tocMaxHeight} />
           </>
+        )}
+
+        {goesWith.length > 0 && (
+          <SidebarBlock heading="Goes with this">
+            {goesWith.map((l) => (
+              <Link key={l.key} component={RouterLink} to={l.to} underline="none" sx={sidebarLink}>
+                {l.label}
+              </Link>
+            ))}
+          </SidebarBlock>
+        )}
+
+        {topic && more.shown.length > 0 && (
+          <SidebarBlock heading={`More in ${topic.label}`}>
+            {more.shown.map((b) => (
+              <Link
+                key={b.slug}
+                component={RouterLink}
+                to={`/benchmarks/${b.slug}`}
+                underline="none"
+                title={b.title}
+                sx={sidebarLinkOneLine}
+              >
+                {b.title}
+              </Link>
+            ))}
+            {more.total > more.shown.length && (
+              <Link
+                component={RouterLink}
+                to={`/benchmarks?topic=${encodeURIComponent(topic.id)}`}
+                underline="none"
+                sx={sidebarLinkOneLine}
+              >
+                All {topic.count}
+              </Link>
+            )}
+          </SidebarBlock>
         )}
       </Box>
     </Box>

@@ -9,11 +9,11 @@
   "blueprintsSource": "docs/blueprints/README.md",
   "topics": [
     { "id": "inserters", "label": "Inserters & clocking" },
-    { "id": "science", "label": "Science builds" },
+    { "id": "science", "label": "Science builds", "blueprintCategories": ["megabasing-uncommon-science", "megabasing-common-quality-science"] },
     { "id": "mining", "label": "Mining" },
     { "id": "engine", "label": "Engine & method" },
-    { "id": "vehicles", "label": "Vehicles & chests" },
-    { "id": "space", "label": "Space platforms" }
+    { "id": "vehicles", "label": "Vehicles & chests", "blueprintCategories": ["general-cars-tanks"] },
+    { "id": "space", "label": "Space platforms", "blueprintCategories": ["megabasing-space-science"] }
   ],
   "benchmarks": [
     {

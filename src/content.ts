@@ -45,6 +45,8 @@ export interface BenchmarkEntry {
 export interface TopicSummary {
   id: string;
   label: string;
+  /** Ids of the `BlueprintCategory` entries on the same subject; empty when none. Set in the manifest. */
+  blueprintCategories: string[];
   /** Number of benchmarks with this topic. */
   count: number;
 }

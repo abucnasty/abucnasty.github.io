@@ -119,12 +119,12 @@ The manifest may list topics, in display order, and give each benchmark one:
 
 ```jsonc
 {
-  "topics": [{ "id": "inserters", "label": "Inserters & clocking" }],
+  "topics": [{ "id": "science", "label": "Science builds", "blueprintCategories": ["megabasing-uncommon-science"] }],
   "benchmarks": [{ "slug": "…", "topic": "inserters" }]   // topic is optional
 }
 ```
 
-A `topic` that is not the `id` of a listed topic, or two topics with the same `id`, fails the sync. A benchmark with no topic is allowed; sync warns with the count. `index.json` gets `topics: [{ id, label, count }]` in manifest order.
+A `topic` that is not the `id` of a listed topic, or two topics with the same `id`, fails the sync. A benchmark with no topic is allowed; sync warns with the count. A topic may list `blueprintCategories`: ids of categories on the Blueprints page (the `id` values in `src/generated/blueprints.json`, e.g. `megabasing-space-science`). The benchmark page links to them under "Goes with this", and the Blueprints page links back to the topic's benchmarks. An id that is not a parsed category fails the sync, before any output is cleared. `index.json` gets `topics: [{ id, label, blueprintCategories, count }]` in manifest order (`blueprintCategories` is `[]` when the manifest has none).
 
 Independently of the manifest, sync also writes `src/generated/saves.json` — see the next section.
 
