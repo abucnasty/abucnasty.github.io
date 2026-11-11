@@ -82,7 +82,15 @@ async function main() {
   await fs.mkdir(GENERATED_DIR, { recursive: true });
   await fs.writeFile(
     path.join(GENERATED_DIR, 'index.json'),
-    JSON.stringify({ sourceRepo: manifest.sourceRepo, benchmarks }, null, 2),
+    JSON.stringify(
+      {
+        sourceRepo: manifest.sourceRepo,
+        benchmarks,
+        saveStats: { count: saveIndex.files.length, bytes: saveIndex.files.reduce((sum, file) => sum + file[1], 0) },
+      },
+      null,
+      2,
+    ),
   );
   log(`✓ index.json (${benchmarks.length} benchmarks)`);
 }

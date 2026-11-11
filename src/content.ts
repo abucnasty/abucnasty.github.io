@@ -36,6 +36,7 @@ export interface BenchmarkEntry {
 export interface ContentIndex {
   sourceRepo: SourceRepo;
   benchmarks: BenchmarkEntry[];
+  saveStats: { count: number; bytes: number };
 }
 
 export interface BlueprintEntry {
