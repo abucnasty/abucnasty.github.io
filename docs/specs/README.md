@@ -16,7 +16,10 @@ Step 2 and 3 specs are written when their step starts. `topics.md` is the input 
 
 ## Rules for every package
 
-1. **Touch only the files your spec lists under "Files".** If another file has to change, stop and report it; don't change it.
+1. **Touch only the files your spec lists under "Files".** If another file has to change, stop and report it; don't change it. Packages run in parallel and each file has one owner.
+   - **Leave the files you touch better than you found them.** A small existing bug in a file on your list (a wrong label, a stale comment, a missing accessible name, dead code) gets fixed in your commit, with a check where one fits, and listed in your report. Don't rewrite or restyle code that works.
+   - An existing bug in a file that is not on your list: report it with the file and line. The coordinator adds it to the same step so it ships in the same PR.
+   - Anything larger than a side fix (behaviour users rely on, data format, a redesign): report it and leave it; it needs a decision.
 2. **One commit**, message `<nn>: <short title>`. Don't push. Don't commit generated output (`src/generated`, `public/benchmarks`, `dist`, `check-output`).
 3. **No new dependencies** unless the spec names one.
 4. **Keep every URL and every existing behaviour** the spec doesn't mention.
