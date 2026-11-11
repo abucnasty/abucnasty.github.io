@@ -20,6 +20,9 @@ module.exports = {
     const newest = items.reduce((a, b) => (b.date > a.date ? b : a));
     const newestDate = newest.date;
     const newestTos = items.filter((i) => i.date === newestDate).map((i) => i.to);
+    const newestWithFinding = data.index.benchmarks
+      .filter((b) => b.date && b.finding)
+      .reduce((a, b) => (!a || b.date > a.date ? b : a), null);
 
     for (const viewport of ['desktop', 'phone']) {
       const phone = viewport === 'phone';
@@ -34,6 +37,42 @@ module.exports = {
 
       const firstHref = await page.locator('main [data-row]').first().getAttribute('href');
       expect(`${viewport}: first Latest row is the newest dated item`, newestTos.includes(firstHref), `${firstHref}, newest ${newestTos.join(', ')}`);
+
+      const findingRow = page.locator(`main [data-row][href="/benchmarks/${newestWithFinding.slug}"]`);
+      const findingRows = await findingRow.count();
+      const lines = findingRows === 1 ? (await findingRow.innerText()).split('\n').map((s) => s.trim()).filter(Boolean) : [];
+      const second = lines[lines.indexOf(newestWithFinding.title) + 1] ?? '';
+      expect(
+        `${viewport}: newest benchmark with a finding shows it on its row's second line`,
+        findingRows === 1 && second.startsWith(newestWithFinding.finding.slice(0, 30)),
+        `${findingRows} rows, second line: "${second}"`,
+      );
+
+      const topicLinks = page.locator('main a[href^="/benchmarks?topic="]');
+      expect(
+        `${viewport}: one topic chip per topic`,
+        (await topicLinks.count()) === data.index.topics.length,
+        `${await topicLinks.count()} chips, ${data.index.topics.length} topics`,
+      );
+      for (const t of data.index.topics) {
+        const chip = page.locator(`main a[href="/benchmarks?topic=${t.id}"]`);
+        const n = await chip.count();
+        const text = n === 1 ? (await chip.innerText()).trim() : '';
+        expect(
+          `${viewport}: topic chip "${t.id}" links to its benchmarks and shows its count`,
+          n === 1 && text.startsWith(t.label) && text.endsWith(String(t.count)),
+          `${n} links, text "${text}"`,
+        );
+      }
+      if (data.index.topics.length > 0) {
+        const lastChip = await topicLinks.last().boundingBox();
+        const alsoHere = await page.locator('main a[href="/blueprints"]').first().boundingBox();
+        expect(
+          `${viewport}: topic chips sit above "Also here"`,
+          !!lastChip && !!alsoHere && lastChip.y + lastChip.height <= alsoHere.y,
+          `chips bottom ${lastChip && Math.round(lastChip.y + lastChip.height)}, Also here ${alsoHere && Math.round(alsoHere.y)}`,
+        );
+      }
 
       const firstRow = await box(page, 'main [data-row]');
       const vh = phone ? 844 : 800;

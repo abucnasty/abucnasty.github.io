@@ -22,17 +22,23 @@ interface FeedItem {
   to: string;
   date: string;
   title: string;
-  /** Chip text: the Factorio version for a benchmark, "Post" for a post. */
+  /** Muted second line: the finding, question or summary; a post's description. */
+  subtitle?: string;
+  /** Chip text: the topic label for a benchmark with a topic, else its Factorio version; "Post" for a post. */
   tag?: string;
 }
 
+const topicLabels = new Map(content.topics.map((t) => [t.id, t.label]));
+
 function benchmarkItem(b: ContentIndex['benchmarks'][number]): FeedItem {
+  const topicLabel = b.topic ? topicLabels.get(b.topic) : undefined;
   return {
     key: `benchmark:${b.slug}`,
     to: `/benchmarks/${b.slug}`,
     date: b.date ?? '',
     title: b.title,
-    tag: b.factorioVersion,
+    subtitle: b.finding ?? b.question ?? b.summary,
+    tag: topicLabel ?? b.factorioVersion,
   };
 }
 
@@ -49,6 +55,7 @@ function FeedRow({ item }: { item: FeedItem }) {
         </Box>
       }
       title={item.title}
+      subtitle={item.subtitle}
       trailing={
         item.tag ? (
           <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
@@ -68,6 +75,7 @@ const latest: FeedItem[] = [
       to: `/blog/${p.slug}`,
       date: p.date,
       title: p.title,
+      subtitle: p.description,
       tag: 'Post',
     }),
   ),
@@ -176,6 +184,32 @@ export function Home() {
         </Stack>
 
         <Stack spacing={layout.sectionGap}>
+          {content.topics.length > 0 && (
+            <Box>
+              <SectionHeader label="Topics" />
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, pt: 1.25 }}>
+                {content.topics.map((t) => (
+                  <Chip
+                    key={t.id}
+                    component={RouterLink}
+                    to={`/benchmarks?topic=${t.id}`}
+                    clickable
+                    size="small"
+                    variant="outlined"
+                    label={
+                      <>
+                        {t.label}{' '}
+                        <Box component="span" sx={{ color: 'text.secondary' }}>
+                          {t.count}
+                        </Box>
+                      </>
+                    }
+                    sx={{ height: { xs: 32, md: 24 } }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          )}
           <Box>
             <SectionHeader label="Also here" />
             <RowGroup>
