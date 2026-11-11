@@ -55,7 +55,7 @@ export function buildSaveTree(index: SaveIndex): SaveTree {
       node.count += 1;
       node.bytes += bytes;
     }
-    const title = index.meta[parts.slice(0, 2).join('/')]?.t ?? '';
+    const title = index.meta[parts.slice(0, 2).join('/')]?.title ?? '';
     const file: SaveFile = {
       name,
       path,

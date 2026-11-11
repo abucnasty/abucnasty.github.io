@@ -69,16 +69,15 @@ export type SaveIndexFile = [path: string, bytes: number, oid: string];
 
 /** Metadata for a top-level folder (`benchmarks/<name>`, `competitions/<name>`). */
 export interface SaveFolderMeta {
-  /** Title — set when the folder is a curated benchmark's `source`. */
-  t?: string;
-  /** Benchmark slug (→ `/benchmarks/<slug>`) — set with `t`. */
-  s?: string;
-  /** Date, `YYYY-MM-DD`: from the manifest, else the folder-name prefix. */
-  d?: string;
-  /** Factorio version from the folder's README. */
-  v?: string;
-  /** Platform from the folder's README, e.g. "linux-x86_64". */
-  p?: string;
+  /** Set, along with `benchmark_slug`, when the folder is a curated benchmark's `source`. */
+  title?: string;
+  benchmark_slug?: string;
+  /** `YYYY-MM-DD`: from the manifest, else the folder-name prefix. */
+  benchmark_date?: string;
+  /** From the folder's README. */
+  factorio_version?: string;
+  /** From the folder's README, e.g. "linux-x86_64". */
+  benchmark_machine_platform?: string;
 }
 
 /** Every `.zip` committed to the source repo. Loaded on demand by the /saves page. */

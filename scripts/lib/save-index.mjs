@@ -25,7 +25,7 @@ const MAX_POINTER_BYTES = 1024;
 
 /**
  * @typedef {[path: string, bytes: number, oid: string]} SaveFile
- * @typedef {{ t?: string, s?: string, d?: string, v?: string, p?: string }} SaveFolderMeta
+ * @typedef {{ title?: string, benchmark_slug?: string, benchmark_date?: string, factorio_version?: string, benchmark_machine_platform?: string }} SaveFolderMeta
  * @typedef {{ lfsWorkerUrl: string, files: SaveFile[], meta: Record<string, SaveFolderMeta> }} SaveIndex
  */
 
@@ -89,11 +89,11 @@ export function buildSaveIndex({ repoPath, lfsWorkerUrl, benchmarks, log = () =>
     const datePrefix = folder.split('/')[1].match(/^(\d{4}-\d{2}-\d{2})-/);
     /** @type {SaveFolderMeta} */
     const m = {
-      t: entry?.title,
-      s: entry?.slug,
-      d: entry?.date ?? datePrefix?.[1],
-      v: factorioVersion,
-      p: platform,
+      title: entry?.title,
+      benchmark_slug: entry?.slug,
+      benchmark_date: entry?.date ?? datePrefix?.[1],
+      factorio_version: factorioVersion,
+      benchmark_machine_platform: platform,
     };
     // JSON.stringify drops the undefined fields; skip folders with nothing to say.
     if (Object.values(m).some((v) => v !== undefined)) meta[folder] = m;

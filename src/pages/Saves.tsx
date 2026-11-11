@@ -61,8 +61,8 @@ function sortFolders(
   sort: SortKey,
   meta?: Record<string, SaveFolderMeta>,
 ): SaveFolder[] {
-  const label = (f: SaveFolder) => meta?.[f.path]?.t ?? f.name;
-  const date = (f: SaveFolder) => meta?.[f.path]?.d ?? '';
+  const label = (f: SaveFolder) => meta?.[f.path]?.title ?? f.name;
+  const date = (f: SaveFolder) => meta?.[f.path]?.benchmark_date ?? '';
   return [...folders].sort((a, b) => {
     if (sort === 'size') return b.bytes - a.bytes;
     // Newest first; folders without a date sort after every dated one.
@@ -263,11 +263,11 @@ function Landing({ tree, sort }: { tree: SaveTree; sort: SortKey }) {
                 <SaveFolderRow
                   key={f.path}
                   path={collapseChain(f).folder.path}
-                  label={meta?.t ?? f.name}
-                  titled={Boolean(meta?.t)}
+                  label={meta?.title ?? f.name}
+                  titled={Boolean(meta?.title)}
                   count={f.count}
                   bytes={f.bytes}
-                  details={{ date: meta?.d, version: meta?.v }}
+                  details={{ date: meta?.benchmark_date, version: meta?.factorio_version }}
                 />
               );
             })}
@@ -375,22 +375,31 @@ function FolderHeader({ tree, folder }: { tree: SaveTree; folder: SaveFolder }) 
     >
       <Box sx={{ flex: '1 1 300px', minWidth: 0 }}>
         <Typography variant="overline" sx={{ display: 'block', color: 'primary.main', letterSpacing: 1 }}>
-          {meta.d ?? (segments[0] === 'competitions' ? 'Competition' : 'Benchmark')}
+          {meta.benchmark_date ?? (segments[0] === 'competitions' ? 'Competition' : 'Benchmark')}
         </Typography>
         <Typography variant="h5" component="h2" sx={{ overflowWrap: 'anywhere' }}>
-          {meta.t ?? segments[1]}
+          {meta.title ?? segments[1]}
         </Typography>
         <Box sx={{ mt: 1.5, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
-          {meta.v && <Chip label={`Factorio ${meta.v}`} size="small" variant="outlined" />}
-          {meta.p && <Chip label={formatPlatform(meta.p)} size="small" variant="outlined" />}
+          {meta.factorio_version && (
+            <Chip label={`Factorio ${meta.factorio_version}`} size="small" variant="outlined" />
+          )}
+          {meta.benchmark_machine_platform && (
+            <Chip label={formatPlatform(meta.benchmark_machine_platform)} size="small" variant="outlined" />
+          )}
           <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: 13 }}>
             {formatSaveCount(top.count)} · {formatBytes(top.bytes)}
           </Typography>
         </Box>
       </Box>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
-        {meta.s && (
-          <Button component={RouterLink} to={`/benchmarks/${meta.s}`} variant="contained" sx={{ minHeight: 44 }}>
+        {meta.benchmark_slug && (
+          <Button
+            component={RouterLink}
+            to={`/benchmarks/${meta.benchmark_slug}`}
+            variant="contained"
+            sx={{ minHeight: 44 }}
+          >
             Read the writeup
           </Button>
         )}
