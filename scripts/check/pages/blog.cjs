@@ -19,6 +19,11 @@ module.exports = {
       const hrefs = await page.$$eval('main a[href^="/blog/"]', (as) => as.map((a) => a.getAttribute('href')));
       expect(`${viewport}: one row per post`, hrefs.length === slugs.length, `${hrefs.length} rows, ${slugs.length} posts`);
       expect(`${viewport}: every post is linked`, slugs.every((s) => hrefs.includes(`/blog/${s}`)));
+      if (viewport === 'desktop') {
+        const heights = await page.$$eval('main tbody tr', (trs) => trs.map((tr) => tr.getBoundingClientRect().height));
+        const tallest = Math.max(...heights);
+        expect('desktop: body row height is at most 36 px', heights.length > 0 && tallest <= 36, `tallest ${tallest} px over ${heights.length} rows`);
+      }
     }
 
     for (const slug of slugs.slice(0, 1)) {
