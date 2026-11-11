@@ -68,7 +68,11 @@ Topic ids are what goes in `content/manifest.json`; labels are what the site sho
 - Space Science Quality is filed under science; it could equally be space.
 - Should a benchmark be allowed two topics? One keeps the filters simple.
 
-## Blueprint categories per topic (draft, for review)
+## Blueprint categories per topic (not applied)
+
+The site owner chose to leave these mappings out for now. The manifest sets no
+`blueprintCategories`, so no blueprint links show on benchmark pages and no benchmark links
+on the Blueprints page. The table below is kept as a starting point if they are added later.
 
 Used by package 12 to link a benchmark page to blueprints and the Blueprints page back to
 benchmarks. Only pairings that looked certain are listed; the other topics link to no

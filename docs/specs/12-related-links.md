@@ -23,7 +23,10 @@ topic to blueprint category, not by guessing from titles.
 - `scripts/check/pages/benchmark-detail.cjs`, `blueprints.cjs`, `data.cjs`
 - `README.md`: the manifest section
 
-## Mapping (draft, to be corrected by the site owner)
+## Mapping (left out for now)
+
+Decision after review: the manifest ships with no `blueprintCategories`. The field, its
+validation and the links stay supported; the three lists below are not in the manifest.
 
 Each entry of `topics` in the manifest may list blueprint category ids (the `id` values in
 `src/generated/blueprints.json`):
