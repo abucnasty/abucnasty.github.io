@@ -4,30 +4,34 @@ Static showcase site for [abucnasty/factorio-benchmarks](https://github.com/abuc
 
 ## What this is
 
-A read-only frontend over a curated subset of the benchmarks repo:
+A read-only frontend over the benchmarks repo — a curated subset of its write-ups, plus every save file in it:
 
 - **Benchmarks** — a sortable table of every benchmark in the manifest, with detail pages that render each `README.md`, link to original save files on GitHub, and surface metadata (date, Factorio version, platform).
+- **Saves** — a browser for every Factorio save (`*.zip`) committed to the benchmarks repo, curated or not: folders, sizes, search, direct downloads. See [Saves page](#saves-page).
 - **Blueprints** — a dense list view of `docs/blueprints/README.md`, grouped by parent → category, with hover-popover previews scraped from factoriobin.
 - **Home** — featured benchmarks plus links.
 
-The site itself contains **no benchmark content in source control** beyond the curation manifest. A sync script at build time reads the local `factorio-benchmarks` clone (or a path set via `$FACTORIO_BENCHMARKS_PATH` in CI), copies / rewrites assets into `public/` and `src/generated/`, and produces a typed JSON index the React app imports directly.
+The site itself contains **no benchmark content in source control** beyond the curation manifest. A sync script at build time reads the local `factorio-benchmarks` clone (or a path set via `$FACTORIO_BENCHMARKS_PATH` in CI), copies / rewrites assets into `public/` and `src/generated/`, and produces typed JSON indexes the React app imports directly.
 
 ## Repo layout
 
 ```
 content/manifest.json         # ← curation list — edit this to add/remove benchmarks
 scripts/
-  sync-content.mjs            # build-time sync: copies assets, rewrites markdown, writes index
+  sync-content.mjs            # build-time sync: copies assets, rewrites markdown, writes indexes
   parse-blueprints.mjs        # parses docs/blueprints/README.md into structured JSON
+  lib/save-index.mjs          # indexes every .zip in the source repo from git objects
 src/
-  components/                 # MarkdownRenderer, BlueprintRow, BenchmarkCard, AppShell, …
-  pages/                      # Home, BenchmarksIndex, BenchmarkDetail, Blueprints, About
+  components/                 # MarkdownRenderer, BlueprintRow, SaveRows, BenchmarkCard, AppShell, …
+  pages/                      # Home, BenchmarksIndex, BenchmarkDetail, Saves, Blueprints, About
   generated/                  # ← gitignored; produced by sync-content.mjs
     index.json
+    saves.json                # every save: [path, bytes, lfs oid] + per-folder metadata
     blueprints.json
     blueprints.md
     benchmarks/<slug>/README.md
   content.ts                  # types for everything in src/generated
+  saves.ts                    # folder tree over saves.json + its on-demand loader
   theme.ts                    # MUI dark theme (orange/green on black)
 public/
   benchmarks/<slug>/...       # ← gitignored; non-zip assets copied by sync
@@ -38,7 +42,7 @@ public/
 
 ## Local development
 
-Prerequisite: clone `factorio-benchmarks` next to this repo (`../factorio/factorio-benchmarks`) **or** set `FACTORIO_BENCHMARKS_PATH` in a local `.env` file.
+Prerequisite: clone `factorio-benchmarks` next to this repo (`../factorio/factorio-benchmarks`) **or** set `FACTORIO_BENCHMARKS_PATH` in a local `.env` file. It has to be a git clone (any kind — full, shallow, partial or sparse), not an exported copy: the save index is read from git objects.
 
 ```sh
 cp .env.example .env
@@ -77,8 +81,24 @@ What sync does for each entry:
 
 - Copies every non-`.zip` file (preserving sub-paths) → `public/benchmarks/<slug>/`
 - Rewrites `README.md` image refs (`./image.png`, `<img src="…">`) → `/benchmarks/<slug>/…` and writes the result to `src/generated/benchmarks/<slug>/README.md`
-- Skips `.zip` files in the copy; their entries in the index point at raw GitHub URLs (`raw.githubusercontent.com/…/master/…`) so saves remain downloadable without bundling them
+- Skips `.zip` files in the copy; their entries in the index link to the download on the LFS worker (`lfsWorkerUrl` in the manifest) so saves remain downloadable without bundling them
 - Extracts `**Factorio Version:**` and `**Platform:**` from the README header and stores them on the index entry
+
+Independently of the manifest, sync also writes `src/generated/saves.json` — see the next section.
+
+## Saves page
+
+`/saves` lists **every** `.zip` committed to the benchmarks repo, not just the ones under curated benchmarks; `/saves/<path in the repo>` opens a folder and `?q=` searches across all of them. Nothing needs adding to the manifest for a save to show up: commit it (through git-lfs) to the benchmarks repo and rebuild.
+
+Sync builds the index ([scripts/lib/save-index.mjs](scripts/lib/save-index.mjs)) from **git objects at `HEAD`** of the source clone, not from the working tree:
+
+- `git ls-tree -r HEAD` finds every `.zip`; `git cat-file --batch` reads its git-lfs pointer, which holds the file's size and sha256 OID. That is all the page needs — no save is ever downloaded at build time.
+- A download link is `<manifest.lfsWorkerUrl>/objects/<oid>/<file name>`, the same Cloudflare worker scheme the per-benchmark save lists use.
+- Each top-level folder (`benchmarks/<name>`, `competitions/<name>`) gets a title, slug and date from the manifest when it is a curated benchmark's `source`, a Factorio version and platform from its `README.md` (also read from `HEAD`), and otherwise a date from a `YYYY-MM-DD-` folder-name prefix.
+- Because it reads `HEAD`, only committed saves appear, and it works the same in a sparse or partial clone where most folders have no files on disk. In a partial clone any pointer blobs that are not local yet are fetched in one batch.
+- Sync fails rather than publish a broken page if it finds no saves at all, a `.zip` that is not a git-lfs pointer, or no `lfsWorkerUrl` in the manifest.
+
+The index (~110 kB) and the page's code are separate chunks loaded only on `/saves`; the other pages don't pay for them.
 
 ## Removing / hiding a benchmark
 
@@ -100,7 +120,7 @@ On sync, each `factoriobin.com/post/<id>` link is fetched once to extract its pr
 Pushed to `master`, [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) handles the rest:
 
 1. Reads `content/manifest.json` and writes a sparse-checkout pattern list (every benchmark `source` + the `docs/blueprints/` directory).
-2. Shallow-clones `abucnasty/factorio-benchmarks` with `--filter=blob:none --sparse` and applies the pattern list — only the curated paths are materialized.
+2. Shallow-clones `abucnasty/factorio-benchmarks` with `--filter=blob:limit=1k --sparse` and applies the pattern list — only the curated paths are materialized. The 1 kB blob limit means every git-lfs pointer in the repo (they are ~130 bytes) arrives with the clone, which is what lets the save index cover folders that are never checked out; larger blobs are still only fetched for the curated paths.
 3. Exports `FACTORIO_BENCHMARKS_PATH` to that clone, runs `npm ci --ignore-scripts && npm run build`.
 4. Uploads `dist/` and deploys via `actions/deploy-pages@v4`.
 

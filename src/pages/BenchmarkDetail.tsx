@@ -20,6 +20,7 @@ import type { ContentIndex } from '../content';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { BenchmarkCharts } from '../components/BenchmarkCharts';
 import { TableOfContents } from '../components/TableOfContents';
+import { saveFolderRoute } from '../saves';
 
 const content = index as ContentIndex;
 
@@ -125,6 +126,13 @@ export function BenchmarkDetail() {
               <Box hidden={tab !== 'saves'}>
                 {tab === 'saves' && (
                   <Stack spacing={0.5}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1 }}>
+                      File sizes, sub-folders and copyable links are in the{' '}
+                      <Link component={RouterLink} to={saveFolderRoute(benchmark.source)}>
+                        save browser
+                      </Link>
+                      .
+                    </Typography>
                     {benchmark.saves.map((s) => (
                       <Link
                         key={s.path}

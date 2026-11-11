@@ -17,6 +17,7 @@ import {
 import { Link as RouterLink } from 'react-router-dom';
 import index from '../generated/index.json';
 import type { ContentIndex } from '../content';
+import { formatPlatform } from '../format';
 
 const content = index as ContentIndex;
 
@@ -139,12 +140,4 @@ export function BenchmarksIndex() {
       </TableContainer>
     </Stack>
   );
-}
-
-function formatPlatform(raw: string): string {
-  const lower = raw.toLowerCase();
-  if (lower.includes('windows') || lower.startsWith('win')) return 'Windows';
-  if (lower.includes('linux')) return 'Linux';
-  if (lower.includes('mac') || lower.includes('darwin')) return 'macOS';
-  return raw;
 }
