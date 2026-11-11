@@ -21,7 +21,7 @@ Step 2 and 3 specs are written when their step starts. `topics.md` is the input 
 3. **No new dependencies** unless the spec names one.
 4. **Keep every URL and every existing behaviour** the spec doesn't mention.
 5. **Write it the way the codebase already does**: MUI components with `sx`, theme tokens (`primary.main`, `text.secondary`, `divider`, `background.paper`), MUI breakpoints for responsive differences. No JS width checks, no hard-coded colours that exist as tokens.
-6. **Accessibility**: links are links and buttons are buttons; icon-only controls get an `aria-label`; tap targets are at least 44 px on phones (`xs`).
+6. **Accessibility**: links are links and buttons are buttons; icon-only controls get an `aria-label`. On phones (`xs`) a row's main link and standalone buttons are at least 44 px; small secondary controls inside a row (chips, markers, a switch) are at least 24 px.
 7. **Verify before handing back**: `npx tsc -b --noEmit`, `npm run build`, `npm run check` must all pass. Add or update the checks your spec lists.
 
 ## Local setup
