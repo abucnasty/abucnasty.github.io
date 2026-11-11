@@ -241,8 +241,8 @@ export function BenchmarkDetail() {
                   '& > ul, & > ol': { p: 0, listStyle: 'none' },
                   // Some questions are written in lower case in the source README.
                   '& > p:first-child::first-letter': upper,
-                  '& > ul:first-child > li:first-child::first-letter': upper,
-                  '& > ul:first-child > li:first-child > p:first-child::first-letter': upper,
+                  '& > ul:first-child > li::first-letter': upper,
+                  '& > ul:first-child > li > p:first-child::first-letter': upper,
                 }}
               />
               {loaded.answer && <MarkdownRenderer source={loaded.answer} sx={leadBlocks} />}

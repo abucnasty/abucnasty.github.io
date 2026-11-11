@@ -258,6 +258,31 @@ module.exports = {
       }
     }
 
+    // A list question: every item starts with a capital, not only the first.
+    const lowerList = list.find((b) => {
+      const f = path.join(generatedDir, b.slug, 'question.md');
+      if (!b.question || !fs.existsSync(f)) return false;
+      const items = fs.readFileSync(f, 'utf8').split('\n').filter((l) => /^[-*]\s+\S/.test(l));
+      return items.filter((l) => /^[-*]\s+[a-z]/.test(l)).length > 1;
+    });
+    if (lowerList) {
+      for (const viewport of ['desktop', 'phone']) {
+        const page = await open(`/benchmarks/${lowerList.slug}`, viewport);
+        await page.waitForSelector(LEAD, { timeout: 10000 });
+        await shot(page, `benchmark-lead-list-${lowerList.slug}-${viewport}`);
+        const transforms = await page
+          .locator(LEAD)
+          .locator('ul > li')
+          .evaluateAll((els) => els.slice(0, els.length).map((e) => (e.parentElement === e.closest('section').firstElementChild.firstElementChild ? getComputedStyle(e, '::first-letter').textTransform : 'skip')));
+        const counted = transforms.filter((t) => t !== 'skip');
+        expect(
+          `list question (${lowerList.slug}), ${viewport}: every item's first letter is upper-case`,
+          counted.length > 1 && counted.every((t) => t === 'uppercase'),
+          counted.join(','),
+        );
+      }
+    }
+
     // The lead stays above the tabs on the other tabs.
     const tabbed = list.find((b) => b.question && (b.timeseries || b.saves.length > 0));
     if (tabbed) {
