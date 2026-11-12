@@ -87,6 +87,12 @@ module.exports = {
         }
         const saves = await page.locator('main a[href="/saves"]').first().innerText();
         expect('desktop: Save files row shows the save count', saves.includes(`${data.index.saveStats.count} saves`), saves.replace(/\n/g, ' | '));
+        // The blueprint count comes from the live catalog (the fixture here): listed, not deprecated.
+        const activeBlueprints = data.catalog.blueprints.filter((e) => e.status !== 'unlisted' && !e.deprecated).length;
+        const bpRow = page.locator('main a[href="/blueprints"]').first();
+        await page.waitForFunction((n) => document.querySelector('main a[href="/blueprints"]')?.textContent.includes(`${n} active blueprints`), activeBlueprints, { timeout: 5000 }).catch(() => {});
+        const bpText = await bpRow.innerText();
+        expect('desktop: Blueprints row shows the live count of active blueprints', bpText.includes(`${activeBlueprints} active blueprints`), bpText.replace(/\n/g, ' | '));
       }
     }
 

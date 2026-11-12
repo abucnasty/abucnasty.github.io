@@ -16,8 +16,7 @@ import {
 import GitHubIcon from '@mui/icons-material/GitHub';
 import DownloadIcon from '@mui/icons-material/Download';
 import index from '../generated/index.json';
-import blueprints from '../generated/blueprints.json';
-import type { BenchmarkEntry, BlueprintIndex, ContentIndex } from '../content';
+import type { BenchmarkEntry, ContentIndex } from '../content';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { BenchmarkCharts } from '../components/BenchmarkCharts';
 import { TableOfContents } from '../components/TableOfContents';
@@ -27,7 +26,6 @@ import { formatPlatform } from '../format';
 import { saveFolderRoute } from '../saves';
 
 const content = index as ContentIndex;
-const blueprintCategories = (blueprints as BlueprintIndex).categories;
 
 /** Most other benchmarks of the topic listed in the sidebar. */
 const MORE_IN_TOPIC = 5;
@@ -209,12 +207,6 @@ export function BenchmarkDetail() {
     ...(hasSaves
       ? [{ key: 'saves', to: saveFolderRoute(benchmark.source), label: `${benchmark.saves.length} save files` }]
       : []),
-    ...(topic?.blueprintCategories ?? []).flatMap((id) => {
-      const category = blueprintCategories.find((c) => c.id === id);
-      return category
-        ? [{ key: id, to: `/blueprints#${encodeURIComponent(id)}`, label: `${category.name} blueprints` }]
-        : [];
-    }),
   ];
   const more = topic ? moreInTopic(benchmark) : { shown: [], total: 0 };
 

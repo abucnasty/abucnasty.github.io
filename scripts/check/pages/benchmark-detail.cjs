@@ -378,7 +378,6 @@ module.exports = {
     // --- related links: sidebar blocks, older / newer ----------------------------------------
     const all = data.index.benchmarks;
     const topicsById = new Map(data.index.topics.map((t) => [t.id, t]));
-    const catName = new Map(data.blueprints.categories.map((c) => [c.id, c.name]));
     const order = new Map(all.map((b, i) => [b.slug, i]));
     // Oldest first; a shared date keeps manifest order.
     const dateOrder = all
@@ -407,7 +406,6 @@ module.exports = {
         return g ? [...g.querySelectorAll('a')].map((a) => [a.getAttribute('href'), a.textContent.trim(), Math.round(a.getBoundingClientRect().height)]) : null;
       });
 
-    const mappedTopic = data.index.topics.find((t) => (t.blueprintCategories ?? []).length > 0);
     const bigTopic = data.index.topics.find((t) => t.count > 6);
     const smallTopic = data.index.topics.find((t) => t.count >= 2 && t.count <= 6);
     const pick = (t) => all.find((b) => b.topic === t.id);
@@ -424,32 +422,20 @@ module.exports = {
       );
     }
 
-    // Runs only while some topic maps to blueprint categories.
-    if (mappedTopic) {
-      const b = pick(mappedTopic);
-      const page = await open(`/benchmarks/${b.slug}`, 'desktop');
-      await page.waitForSelector('main h1', { timeout: 10000 });
-      const gw = (await groups(page)).find((g) => g.heading === 'Goes with this');
-      const bp = (gw?.links ?? []).filter(([h]) => h.startsWith('/blueprints#'));
-      const wantBp = mappedTopic.blueprintCategories.map((id) => [`/blueprints#${id}`, `${catName.get(id)} blueprints`]);
-      expect(`${b.slug}: one blueprint link per mapped category, in order`, JSON.stringify(bp) === JSON.stringify(wantBp), `${JSON.stringify(bp)} vs ${JSON.stringify(wantBp)}`);
-    }
-
-    // Without a mapping for its topic, "Goes with this" has no link to the Blueprints page.
-    const unmappedWithSaves = all.find((b) => b.saves.length > 0 && (topicsById.get(b.topic)?.blueprintCategories ?? []).length === 0);
-    if (unmappedWithSaves) {
-      const page = await open(`/benchmarks/${unmappedWithSaves.slug}`, 'desktop');
+    // "Goes with this" links only to save files: nothing on it points at the Blueprints page.
+    if (withSaves) {
+      const page = await open(`/benchmarks/${withSaves.slug}`, 'desktop');
       await page.waitForSelector('main h1', { timeout: 10000 });
       const gw = (await groups(page)).find((g) => g.heading === 'Goes with this');
       expect(
-        `${unmappedWithSaves.slug}: topic has no blueprint categories, so "Goes with this" links nothing to /blueprints`,
+        `${withSaves.slug}: "Goes with this" links nothing to /blueprints`,
         gw && gw.links.length > 0 && gw.links.every(([h]) => !h.startsWith('/blueprints')),
         JSON.stringify(gw),
       );
     }
 
-    // A benchmark with neither saves nor mapped blueprints has no "Goes with this".
-    const bare = all.find((b) => b.saves.length === 0 && (topicsById.get(b.topic)?.blueprintCategories ?? []).length === 0);
+    // A benchmark with no saves has no "Goes with this".
+    const bare = all.find((b) => b.saves.length === 0);
     if (bare) {
       const page = await open(`/benchmarks/${bare.slug}`, 'desktop');
       await page.waitForSelector('main h1', { timeout: 10000 });
@@ -543,9 +529,6 @@ module.exports = {
       .map((s) => all.find((b) => b.source.endsWith(s)))
       .filter(Boolean);
     expect('the two long writeups are in the index', longOnes.length === 2, longOnes.map((b) => b.slug).join(','));
-    // The fullest sidebar: saves, every mapped blueprint category and a topic with more than five others.
-    const fullest = all.find((b) => b.saves.length > 0 && mappedTopic && b.topic === mappedTopic.id);
-    if (fullest) longOnes.push(fullest);
     for (const b of longOnes) {
       for (const height of [800, 600]) {
         const page = await open(`/benchmarks/${b.slug}`, 'desktop');

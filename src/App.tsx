@@ -5,13 +5,13 @@ import { AppShell } from './components/AppShell';
 import { Home } from './pages/Home';
 import { BenchmarksIndex } from './pages/BenchmarksIndex';
 import { BenchmarkDetail } from './pages/BenchmarkDetail';
-import { Blueprints } from './pages/Blueprints';
 import { About } from './pages/About';
 import { Tools } from './pages/Tools';
 import { BlogIndex } from './pages/BlogIndex';
 import { BlogPost } from './pages/BlogPost';
 import { NotFound } from './pages/NotFound';
 import { loadSaveTree } from './saves';
+import { loadCatalog } from './catalog';
 
 // The save browser and its index are split out of the main bundle: only
 // visitors to /saves download them. The index starts loading alongside the
@@ -19,6 +19,12 @@ import { loadSaveTree } from './saves';
 const Saves = lazy(() => {
   loadSaveTree().catch(() => {}); // the page itself reports a failed load
   return import('./pages/Saves').then((m) => ({ default: m.Saves }));
+});
+
+// The Blueprints page (and its typeface) is its own chunk; the catalog fetch starts alongside it.
+const BlueprintsPage = lazy(() => {
+  loadCatalog().catch(() => {}); // the page itself reports a failed load
+  return import('./pages/blueprints/BlueprintsPage').then((m) => ({ default: m.BlueprintsPage }));
 });
 
 export function App() {
@@ -36,7 +42,14 @@ export function App() {
             </Suspense>
           }
         />
-        <Route path="/blueprints" element={<Blueprints />} />
+        <Route
+          path="/blueprints/*"
+          element={
+            <Suspense fallback={null}>
+              <BlueprintsPage />
+            </Suspense>
+          }
+        />
         <Route path="/about" element={<About />} />
         <Route path="/tools" element={<Tools />} />
         <Route path="/blog" element={<BlogIndex />} />

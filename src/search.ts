@@ -1,9 +1,10 @@
 // Site search: the entries and the matching, with no React. The save index is
-// NOT imported here (it is its own chunk); the dialog loads it on demand and
-// hands the tree to `saveEntries`.
+// NOT imported here (it is its own chunk) and blueprints come from the live
+// catalog; the dialog loads both on demand and hands them to `saveEntries` and
+// `blueprintEntries`.
 import index from './generated/index.json';
-import blueprints from './generated/blueprints.json';
-import type { BlueprintIndex, ContentIndex } from './content';
+import type { ContentIndex } from './content';
+import { blueprintRoute, categoryName, folderName, isListed, type Catalog } from './catalog';
 import { blogPosts } from './blog/registry';
 import { toolSections, tutorials } from './data/tools';
 import { benchmarkMatchText } from './benchmarkFilters';
@@ -33,7 +34,6 @@ export const SEARCH_GROUPS: Array<{ kind: SearchKind; label: string }> = [
 ];
 
 const content = index as ContentIndex;
-const blueprintIndex = blueprints as BlueprintIndex;
 
 const hay = (...parts: Array<string | undefined>) =>
   parts
@@ -41,7 +41,7 @@ const hay = (...parts: Array<string | undefined>) =>
     .join('\n')
     .toLowerCase();
 
-/** Everything except save files, built once from data already in the main bundle. */
+/** Everything except save files and blueprints, built once from data already in the main bundle. */
 export function staticEntries(): SearchEntry[] {
   const topicLabels = new Map(content.topics.map((t) => [t.id, t.label]));
   const entries: SearchEntry[] = [];
@@ -59,20 +59,6 @@ export function staticEntries(): SearchEntry[] {
       to: `/benchmarks/${b.slug}`,
       haystack: benchmarkMatchText(b, b.topic ? topicLabels.get(b.topic) : undefined),
     });
-  }
-
-  for (const category of blueprintIndex.categories) {
-    for (const e of category.entries) {
-      if (e.deprecated) continue;
-      entries.push({
-        kind: 'blueprint',
-        title: e.description,
-        detail: category.name,
-        to: e.factoriobinUrl ?? '/blueprints',
-        external: Boolean(e.factoriobinUrl),
-        haystack: hay(e.description, category.name, category.parent, e.author),
-      });
-    }
   }
 
   for (const section of toolSections) {
@@ -100,6 +86,23 @@ export function staticEntries(): SearchEntry[] {
     });
   }
   return entries;
+}
+
+/** Listed blueprints that are not deprecated, from the live catalog. */
+export function blueprintEntries(catalog: Catalog): SearchEntry[] {
+  return catalog.blueprints
+    .filter((e) => isListed(e) && !e.deprecated)
+    .map((e) => {
+      const category = categoryName(e.path);
+      const group = folderName(e.path.split('/')[0]);
+      return {
+        kind: 'blueprint' as const,
+        title: e.title,
+        detail: category || group,
+        to: blueprintRoute(e.path),
+        haystack: hay(e.title, category, group, ...e.authors),
+      };
+    });
 }
 
 /** Save files matching the query, from the lazily loaded save tree. */

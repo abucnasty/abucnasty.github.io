@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { AppBar, Box, ButtonBase, Container, Drawer, IconButton, List, ListItem, ListItemButton, ListItemText, Toolbar, Typography } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import SearchIcon from '@mui/icons-material/Search';
-import { NavLink as RouterNavLink, Link as RouterLink } from 'react-router-dom';
+import { NavLink as RouterNavLink, Link as RouterLink, useLocation } from 'react-router-dom';
 import { SocialLinks } from './SocialLinks';
 import { BrandAvatar } from './BrandAvatar';
 import { layout } from '../layout';
@@ -37,6 +37,9 @@ export function AppShell({ children }: AppShellProps) {
 function Shell({ children }: AppShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { isOpen: searchOpen, open: openSearch } = useSearch();
+  // The Blueprints page lays out its own full-width columns under the top bar.
+  const { pathname } = useLocation();
+  const fullBleed = pathname === '/blueprints' || pathname.startsWith('/blueprints/');
 
   // "/" opens search unless the visitor is typing somewhere; Ctrl+K and Cmd+K work everywhere.
   useEffect(() => {
@@ -186,9 +189,15 @@ function Shell({ children }: AppShellProps) {
         </List>
       </Drawer>
 
-      <Container component="main" maxWidth="lg" sx={{ flexGrow: 1, py: 3 }}>
-        {children}
-      </Container>
+      {fullBleed ? (
+        <Box component="main" sx={{ flexGrow: 1, display: 'flex', minWidth: 0 }}>
+          {children}
+        </Box>
+      ) : (
+        <Container component="main" maxWidth="lg" sx={{ flexGrow: 1, py: 3 }}>
+          {children}
+        </Container>
+      )}
 
       <Box
         component="footer"

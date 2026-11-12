@@ -31,17 +31,14 @@ jobs:
         id: manifest
         run: |
           set -euo pipefail
-          # Extract repo coords + the union of every benchmark `source` plus
-          # the directory of `blueprintsSource` from content/manifest.json.
-          # Writes the path list to ./.sparse-paths and exposes the repo coords
-          # via step outputs.
+          # Extract repo coords + the union of every benchmark `source` from
+          # content/manifest.json. Writes the path list to ./.sparse-paths and
+          # exposes the repo coords via step outputs.
           node --input-type=module - <<'EOF'
           import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
-          import path from 'node:path';
           const m = JSON.parse(readFileSync('content/manifest.json', 'utf8'));
           const paths = new Set();
           for (const b of m.benchmarks) if (b.source) paths.add(b.source);
-          if (m.blueprintsSource) paths.add(path.dirname(m.blueprintsSource));
           writeFileSync('.sparse-paths', [...paths].join('\n') + '\n');
           const out = process.env.GITHUB_OUTPUT;
           appendFileSync(out, `owner=${m.sourceRepo.owner}\n`);

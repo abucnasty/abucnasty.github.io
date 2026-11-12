@@ -105,16 +105,14 @@ module.exports = {
       (topics ?? []).map((t) => `${t.id}=${t.count}`).join(', '),
     );
 
-    // Blueprint categories named by a topic exist, and each topic carries the field.
-    const categoryIds = new Set(data.blueprints.categories.map((c) => c.id));
+    // Blueprints are fetched live by the browser: nothing about them is generated at build time.
+    const generatedRoot = path.join(root, 'src', 'generated');
+    const stale = ['blueprints.json', 'blueprints.md'].filter((f) => fs.existsSync(path.join(generatedRoot, f)));
+    expect('sync writes no blueprint data', stale.length === 0, stale.join(','));
     expect(
-      'every topic has a blueprintCategories array',
-      (topics ?? []).every((t) => Array.isArray(t.blueprintCategories)),
-      (topics ?? []).filter((t) => !Array.isArray(t.blueprintCategories)).map((t) => t.id).join(','),
+      'topics carry only id, label and count',
+      (topics ?? []).every((t) => JSON.stringify(Object.keys(t).sort()) === '["count","id","label"]'),
+      (topics ?? []).map((t) => Object.keys(t).join('+')).join(' | '),
     );
-    const unknownCategories = (topics ?? []).flatMap((t) =>
-      (t.blueprintCategories ?? []).filter((id) => !categoryIds.has(id)).map((id) => `${t.id}: ${id}`),
-    );
-    expect('every topic blueprint category is a category in blueprints.json', unknownCategories.length === 0, unknownCategories.join(' | '));
   },
 };

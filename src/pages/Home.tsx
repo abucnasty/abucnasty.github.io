@@ -2,8 +2,8 @@ import { Box, ButtonBase, Chip, Stack, Typography } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { Link as RouterLink } from 'react-router-dom';
 import index from '../generated/index.json';
-import blueprints from '../generated/blueprints.json';
-import type { BlueprintIndex, ContentIndex } from '../content';
+import type { ContentIndex } from '../content';
+import { activeCount, useCatalog } from '../catalog';
 import { blogPosts } from '../blog/registry';
 import { formatBytes } from '../format';
 import { layout } from '../layout';
@@ -15,7 +15,6 @@ import { ListRow, RowGroup } from '../components/ListRow';
 import { useSearch } from '../components/SearchDialog';
 
 const content = index as ContentIndex;
-const blueprintIndex = blueprints as BlueprintIndex;
 
 const LATEST_COUNT = 8;
 
@@ -91,13 +90,13 @@ const featured = content.benchmarks
   .map(benchmarkItem)
   .filter((i) => !latestKeys.has(i.key));
 
-const activeBlueprints = blueprintIndex.categories.reduce(
-  (n, c) => n + c.entries.filter((e) => !e.deprecated).length,
-  0,
-);
-
-const alsoHere: Array<{ title: string; subtitle: string; to: string }> = [
-  { title: 'Blueprints', subtitle: `${activeBlueprints} active blueprints`, to: '/blueprints' },
+/** The rows of "Also here"; the blueprint count comes from the live catalog once it has loaded. */
+const alsoHere = (activeBlueprints: number | null): Array<{ title: string; subtitle: string; to: string }> => [
+  {
+    title: 'Blueprints',
+    subtitle: activeBlueprints === null ? 'Megabase builds, straight from the vault' : `${activeBlueprints} active blueprints`,
+    to: '/blueprints',
+  },
   {
     title: 'Save files',
     subtitle: `${content.saveStats.count} saves, ${formatBytes(content.saveStats.bytes)}`,
@@ -112,10 +111,14 @@ const alsoHere: Array<{ title: string; subtitle: string; to: string }> = [
   { title: 'About', subtitle: 'Who runs this and how to get in touch', to: '/about' },
 ];
 
-const fullSearchText = `Search ${content.benchmarks.length} benchmarks, ${activeBlueprints} blueprints and ${content.saveStats.count} save files`;
+const fullSearchText = (activeBlueprints: number | null) =>
+  `Search ${content.benchmarks.length} benchmarks, ${activeBlueprints === null ? '' : `${activeBlueprints} `}blueprints and ${content.saveStats.count} save files`;
 
 export function Home() {
   const { open: openSearch } = useSearch();
+  const catalog = useCatalog();
+  const activeBlueprints = catalog.catalog ? activeCount(catalog.catalog) : null;
+  const searchText = fullSearchText(activeBlueprints);
   return (
     <Stack spacing={layout.sectionGap}>
       <Box
@@ -148,7 +151,7 @@ export function Home() {
       <ButtonBase
         data-home-search
         onClick={openSearch}
-        aria-label={fullSearchText}
+        aria-label={searchText}
         sx={{
           display: 'flex',
           justifyContent: 'flex-start',
@@ -171,7 +174,7 @@ export function Home() {
           component="span"
           sx={{ display: { xs: 'none', sm: 'inline' }, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
         >
-          {fullSearchText}
+          {searchText}
         </Box>
       </ButtonBase>
 
@@ -249,7 +252,7 @@ export function Home() {
           <Box>
             <SectionHeader label="Also here" />
             <RowGroup>
-              {alsoHere.map((r) => (
+              {alsoHere(activeBlueprints).map((r) => (
                 <ListRow key={r.to} to={r.to} title={r.title} subtitle={r.subtitle} />
               ))}
             </RowGroup>

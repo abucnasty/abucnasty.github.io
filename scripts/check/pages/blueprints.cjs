@@ -1,130 +1,199 @@
+// The Blueprints page, against the catalog fixture (scripts/check/fixtures/catalog.cjs) that
+// run.cjs serves in place of the live vault.
+const { VAULT, stringFor } = require('../fixtures/catalog.cjs');
+
+const REPO = 'https://github.com/abucnasty/factorio-blueprints';
+
 module.exports = {
   name: 'blueprints',
-  async run({ open, expect, data, shot, box, aboveFold }) {
-    const entries = data.blueprints.categories.flatMap((c) => c.entries);
-    const active = entries.filter((e) => !e.deprecated).length;
-    const activeCategories = data.blueprints.categories.filter((c) => c.entries.some((e) => !e.deprecated)).length;
+  async run({ open, goto, expect, data, shot, box, requests }) {
+    const all = data.catalog.blueprints;
+    const listed = all.filter((e) => e.status !== 'unlisted');
+    const active = listed.filter((e) => !e.deprecated);
+    const deprecated = listed.filter((e) => e.deprecated);
+    const unlisted = all.filter((e) => e.status === 'unlisted');
+    const wide = all.find((e) => e.path === 'megabasing/space-science/wide-build');
+    const book = all.find((e) => e.path === 'general/tools/test-book');
+    const ghost = all.find((e) => e.renders.length === 0);
+    const old = deprecated[0];
+    const hidden = unlisted[0];
 
-    // Every row carries its description as a title attribute (for the truncated text).
-    const rows = (page) => page.locator('main [title]').count();
-    // A row is the element holding the description <p>, two levels up from it.
-    const rowSel = 'main div:has(> div > p[title])';
-    // Found by its accessible name (the aria-label reaches the <input> through slotProps).
-    const toggle = (page) => page.getByRole('switch', { name: 'Show deprecated blueprints' });
+    const rows = (page) => page.locator('[data-index-row]');
+    const rowTitles = (page) => page.$$eval('[data-index-row] > span:first-child', (els) => els.map((e) => e.textContent.trim()));
+    const title = (page) => page.locator('[data-stage] h2').first().textContent();
+    const liveLink = (page) => page.locator('[data-stage] a[href$=".txt"]').first().getAttribute('href');
+    const copyButton = (page) => page.getByRole('button', { name: /^(Copy string|Copied)$/ });
+    const ready = (page) => page.waitForSelector('[data-stage] h2', { timeout: 10000 });
+    const clipboard = (page) => page.evaluate(() => navigator.clipboard.readText());
 
-    for (const viewport of ['desktop', 'phone']) {
-      const page = await open('/blueprints', viewport);
-      await shot(page, `blueprints-${viewport}`);
-      const meta = (await page.locator('main h1').first().evaluate((h) => h.parentElement.textContent)) ?? '';
-      expect(
-        `${viewport}: header counts categories that have an active blueprint`,
-        meta.includes(`${active} active blueprints across ${activeCategories} categories`),
-        `${meta} (expected ${active} across ${activeCategories})`,
-      );
-      expect(`${viewport}: one row per non-deprecated entry`, (await rows(page)) === active, `${await rows(page)} rows, ${active} entries`);
-      const rowEls = await page.locator(rowSel).count();
-      expect(`${viewport}: row selector matches one element per row`, rowEls === active, `${rowEls} elements, ${active} entries`);
-      const heights = await page.$$eval(rowSel, (els) => els.map((el) => el.getBoundingClientRect().height));
-      if (viewport === 'desktop') {
-        const h = (await box(page, rowSel))?.height ?? 0;
-        expect('desktop: blueprint row is at most 36 px tall', h > 0 && h <= 36, `${h} px`);
-        const above = await aboveFold(page, rowSel);
-        expect('desktop: at least 13 blueprint rows above the fold', above >= 13, `${above} rows above the fold`);
-      } else {
-        const min = Math.min(...heights);
-        expect('phone: every blueprint row is at least 44 px tall', heights.length > 0 && min >= 44, `shortest ${min} px`);
-      }
-      expect(`${viewport}: deprecated switch is off by default`, !(await toggle(page).isChecked()));
-      await toggle(page).click();
-      expect(`${viewport}: deprecated switch reveals the rest`, (await rows(page)) === entries.length, `${await rows(page)} rows, ${entries.length} entries`);
-      await toggle(page).click();
-      expect(`${viewport}: switching off hides them again`, (await rows(page)) === active);
-    }
-
-    // --- links to and from benchmarks ---------------------------------------------------------
-    const topBar = 48;
-    const mapped = [...new Set(data.index.topics.flatMap((t) => t.blueprintCategories ?? []))];
-    // Hash scrolling does not depend on a mapping: the first, a middle and the last visible category.
-    const visible = data.blueprints.categories.filter((c) => c.entries.some((e) => !e.deprecated)).map((c) => c.id);
-    const hashIds = [...new Set([visible[0], visible[Math.floor(visible.length / 2)], visible[visible.length - 1]])];
-    // Where a category block is relative to the window: its top, bottom and the page's scroll.
-    const place = (page, id) =>
-      page.evaluate((i) => {
-        const el = document.getElementById(i);
-        if (!el) return null;
-        const r = el.getBoundingClientRect();
-        return { top: Math.round(r.top), bottom: Math.round(r.bottom), win: window.innerHeight, scrollY: Math.round(window.scrollY) };
-      }, id);
-    const inView = (p) => p && p.top >= topBar && p.top < p.win;
-
-    for (const viewport of ['desktop', 'phone']) {
-      // A fresh load of /blueprints#<id> brings that category into view.
-      for (const id of hashIds) {
-        const page = await open(`/blueprints#${id}`, viewport);
-        await page.waitForTimeout(400);
-        const p = await place(page, id);
-        expect(`${viewport}: /blueprints#${id} brings the category into view below the top bar`, inView(p), JSON.stringify(p));
-        if (id === hashIds[hashIds.length - 1]) await shot(page, `blueprints-hash-${viewport}`);
-      }
-
-      // A category whose entries are all deprecated is hidden by default; the hash does nothing.
-      const hiddenCat = data.blueprints.categories.find((c) => c.entries.every((e) => e.deprecated));
-      if (hiddenCat) {
-        const page = await open(`/blueprints#${hiddenCat.id}`, viewport);
-        await page.waitForTimeout(400);
-        const y = await page.evaluate(() => Math.round(window.scrollY));
-        expect(`${viewport}: /blueprints#${hiddenCat.id} (all deprecated, hidden) leaves the page at the top`, y === 0 && (await place(page, hiddenCat.id)) === null, `scrollY=${y}`);
-      }
-      const page2 = await open('/blueprints#no-such-category', viewport);
-      await page2.waitForTimeout(200);
-      expect(`${viewport}: an unknown hash leaves the page at the top`, (await page2.evaluate(() => Math.round(window.scrollY))) === 0);
-    }
-
-    // Topic links in a category's header: right target for a mapped category, none for the others.
+    // --- desktop: the index and the opening build --------------------------------------------
     {
       const page = await open('/blueprints', 'desktop');
-      for (const cat of data.blueprints.categories) {
-        if (!cat.entries.some((e) => !e.deprecated)) continue;
-        const want = data.index.topics
-          .filter((t) => (t.blueprintCategories ?? []).includes(cat.id))
-          .map((t) => [`/benchmarks?topic=${t.id}`, `${t.label} benchmarks`]);
-        const got = await page.evaluate(
-          (i) => [...document.querySelectorAll(`[id="${i}"] a[href^="/benchmarks"]`)].map((a) => [a.getAttribute('href'), a.textContent.trim()]),
-          cat.id,
-        );
-        expect(
-          `${cat.id}: ${want.length ? 'shows its topic link' : 'shows no topic link'}`,
-          JSON.stringify(got) === JSON.stringify(want),
-          `${JSON.stringify(got)} vs ${JSON.stringify(want)}`,
-        );
-      }
-      // Runs only while some topic maps to a category.
-      const id = mapped.find((m) => visible.includes(m));
-      if (id) {
-        const link = page.locator(`[id="${id}"] a[href^="/benchmarks?topic="]`).first();
-        const lb = await link.boundingBox();
-        const hb = await page.locator(`[id="${id}"]`).boundingBox();
-        expect(`${id}: topic link sits at the right edge of the category header`, lb && hb && Math.abs(lb.x + lb.width - (hb.x + hb.width)) <= 16, `${JSON.stringify(lb)} in ${JSON.stringify(hb)}`);
-      }
+      await ready(page);
+      await shot(page, 'blueprints-desktop');
+      const sentence = (await page.locator('[data-count]').textContent()).trim();
+      expect('desktop: the header sentence counts the active builds', sentence === `${active.length} builds, straight from the vault on GitHub.`, sentence);
+      const repo = await page.locator('[data-count] a').getAttribute('href');
+      expect('desktop: the header sentence links to the vault repository', repo === REPO, repo);
+      expect('desktop: one row per listed, active build', (await rows(page).count()) === active.length, `${await rows(page).count()} rows, ${active.length} builds`);
+      const titles = await rowTitles(page);
+      expect('desktop: an unlisted build is not in the index', !titles.includes(hidden.title), titles.join(', '));
+      expect('desktop: deprecated builds are hidden by default', !titles.includes(old.title));
+      const groups = await page.$$eval('[data-index] [role=group]', (els) => els.map((e) => e.getAttribute('aria-label')));
+      expect('desktop: "Megabasing" is the first group', groups[0] === 'Megabasing', groups.join(', '));
+      const h = (await box(page, '[data-index-row]'))?.height;
+      expect('desktop: index rows are 34 px tall', h === 34, `${h}px`);
+      expect('desktop: the stage opens on the newest listed build with a cover', (await title(page)) === wide.title, await title(page));
+      expect('desktop: no row is marked before one is picked', (await page.locator('[data-index-row][aria-current]').count()) === 0);
+      expect('desktop: the URL stays /blueprints', new URL(page.url()).pathname === '/blueprints', page.url());
+      const html = (await page.content()).toLowerCase();
+      expect('desktop: nothing on the page mentions FactorioBin', !html.includes('factoriobin'));
+      const font = await page.locator('[data-stage] h2').evaluate((el) => getComputedStyle(el).fontFamily);
+      expect('desktop: the title is set in Titillium Web', font.includes('Titillium Web'), font);
+      const loaded = await page.evaluate(() => document.fonts.check('600 34px "Titillium Web"'));
+      expect('desktop: Titillium Web is loaded with the page', loaded);
+
+      // Filter: by title, then nothing, then Clear.
+      await page.fill('input[aria-label="Find a build"]', 'book');
+      expect('desktop: the filter narrows the index by title', JSON.stringify(await rowTitles(page)) === JSON.stringify([book.title]), (await rowTitles(page)).join(', '));
+      await page.fill('input[aria-label="Find a build"]', 'yuu');
+      expect('desktop: the filter matches authors', JSON.stringify(await rowTitles(page)) === JSON.stringify([wide.title]), (await rowTitles(page)).join(', '));
+      await page.fill('input[aria-label="Find a build"]', 'zzzz');
+      const none = (await page.locator('[data-index] [role=status]').textContent()) ?? '';
+      expect('desktop: no match says so', none.includes('Nothing matches “zzzz”.'), none);
+      await shot(page, 'blueprints-no-match');
+      await page.getByRole('button', { name: 'Clear' }).click();
+      expect('desktop: Clear brings every row back', (await rows(page).count()) === active.length);
+      await page.fill('input[aria-label="Find a build"]', hidden.title);
+      expect('desktop: the filter never finds an unlisted build', (await rows(page).count()) === 0);
+      await page.fill('input[aria-label="Find a build"]', '');
+
+      // Deprecated switch.
+      const toggle = page.getByRole('checkbox', { name: `Show deprecated (${deprecated.length})` });
+      expect('desktop: the deprecated switch is off by default', !(await toggle.isChecked()));
+      await toggle.check();
+      const withOld = await rowTitles(page);
+      expect('desktop: the switch reveals deprecated builds', withOld.includes(old.title) && (await rows(page).count()) === listed.length, withOld.join(', '));
+      const oldRow = page.locator('[data-index-row]', { hasText: old.title });
+      expect('desktop: a deprecated row says "deprecated" where the version goes', ((await oldRow.locator('span').nth(1).textContent()) ?? '').trim() === 'deprecated');
+      await toggle.uncheck();
+
+      // Selecting a row.
+      await page.locator('[data-index-row]', { hasText: wide.title }).click();
+      await page.waitForURL(`**/blueprints/${wide.path}`);
+      expect('desktop: a row selects its build', (await title(page)) === wide.title);
+      expect('desktop: the live link is the build\'s string', (await liveLink(page)) === `${VAULT}/${wide.path}.txt`, await liveLink(page));
+      expect('desktop: the picked row is marked', ((await page.locator('[data-index-row][aria-current="page"]').textContent()) ?? '').includes(wide.title));
+      const meta = (await page.locator('[data-meta]').textContent()) ?? '';
+      expect('desktop: the meta line is the version and the authors', meta === `${wide.version}by ${wide.authors.join(', ')}`, meta);
+      const plate = await page.locator('[data-plate="image"]').evaluate((el) => getComputedStyle(el).aspectRatio);
+      expect('desktop: the plate reserves the render\'s shape from the index', plate.replace(/\s/g, '') === '64/32', plate);
+      const versions = await page.locator('[data-versions] button').count();
+      expect('desktop: older versions each have a Copy button', versions === wide.history.length - 1, `${versions}`);
+      const facts = await page.$$eval('[data-facts] dt', (els) => els.map((e) => e.textContent));
+      expect('desktop: facts are Entities, Tiles, Factorio, Posted', JSON.stringify(facts) === JSON.stringify(['Entities', 'Tiles', 'Factorio', 'Posted']), facts.join(','));
+
+      await copyButton(page).click();
+      await page.getByRole('button', { name: 'Copied' }).waitFor({ timeout: 5000 });
+      const text = await clipboard(page);
+      expect('desktop: Copy string puts the fetched string on the clipboard', text === stringFor(wide.path), text);
+      await shot(page, 'blueprints-build');
+
+      // The viewer.
+      await page.locator('[data-plate="image"]').click();
+      await page.locator('[data-viewer]').waitFor();
+      expect('desktop: the plate opens the full-screen viewer', (await page.locator('[data-viewer]').count()) === 1);
+      await page.keyboard.press('Escape');
+      await page.locator('[data-viewer]').waitFor({ state: 'detached' });
+      expect('desktop: Escape closes the viewer and focus returns to the plate', (await page.evaluate(() => document.activeElement?.getAttribute('data-plate'))) === 'image');
+
+      const images = requests(page).filter((u) => u.startsWith(VAULT) && u.endsWith('.jpg'));
+      expect('desktop: only the one render on screen was downloaded', new Set(images).size === 1, images.join(' '));
     }
 
-    // Runs only while some topic maps to a category. From a benchmark page, each "… blueprints" link lands on /blueprints with the category in view.
-    for (const t of data.index.topics.filter((x) => (x.blueprintCategories ?? []).length > 0)) {
-      const b = data.index.benchmarks.find((x) => x.topic === t.id);
-      for (const id of t.blueprintCategories) {
-        const name = data.blueprints.categories.find((c) => c.id === id).name;
-        const page = await open(`/benchmarks/${b.slug}`, 'desktop');
-        await page.waitForSelector('main h1', { timeout: 10000 });
-        await page.getByRole('link', { name: `${name} blueprints`, exact: true }).click();
-        await page.waitForTimeout(500);
-        const where = await page.evaluate(() => [location.pathname, location.hash]);
-        const p = await place(page, id);
-        expect(
-          `${b.slug} -> "${name} blueprints": lands on /blueprints#${id} with the category in view`,
-          where[0] === '/blueprints' && where[1] === `#${id}` && inView(p),
-          `${where.join('')} ${JSON.stringify(p)}`,
-        );
-      }
+    // --- a book, and an entry of it -------------------------------------------------------------
+    {
+      const page = await open(`/blueprints/${book.path}`, 'desktop');
+      await ready(page);
+      await page.waitForSelector('[data-arrangement="book"]', { timeout: 5000 }).catch(() => {});
+      expect('book: a book whose render is measured on load is arranged beside its contents', (await page.locator('[data-arrangement="book"]').count()) === 1);
+      const box = await page.locator('[data-contents]').evaluate((el) => ({ overflow: getComputedStyle(el).overflowY, border: getComputedStyle(el).borderTopWidth, flag: el.dataset.overflowing ?? null }));
+      expect('book: a short contents list beside the plate neither scrolls nor shows rules', box.overflow === 'visible' && box.border === '0px' && box.flag === null, JSON.stringify(box));
+      const contents = await page.$$eval('[data-contents] a', (els) => els.map((e) => e.textContent.trim()));
+      expect(
+        'book: contents start with "Whole book" and name unlabelled entries by kind and slot',
+        JSON.stringify(contents) === JSON.stringify(['Whole book', 'Outer Book', 'Inner One', 'Blueprint (slot 3)', 'Upgrade planner (slot 1)']),
+        contents.join(' | '),
+      );
+      await page.locator('[data-contents] a', { hasText: 'Inner One' }).click();
+      await page.waitForURL(/entry=0\/0$/);
+      expect('book: an entry retargets the live link', (await liveLink(page)) === `${VAULT}/${book.path}/0/0.txt`, await liveLink(page));
+      expect('book: the entry\'s label is the title', (await title(page)) === 'Inner One');
+      const crumbs = ((await page.locator('[data-crumbs]').textContent()) ?? '').trim();
+      expect('book: the book and outer book sit above the title', crumbs === `${book.title} / Outer Book`, crumbs);
+      await page.getByText('Fixture note for general/tools/test-book/0-inner-one.').waitFor({ timeout: 5000 }).catch(() => {});
+      expect('book: an entry with a folder shows its own notes, generated block stripped', (await page.getByText('Fixture note for general/tools/test-book/0-inner-one.').count()) === 1 && (await page.getByRole('link', { name: 'Part', exact: true }).count()) === 0);
+      await copyButton(page).click();
+      await page.getByRole('button', { name: 'Copied' }).waitFor({ timeout: 5000 });
+      expect('book: Copy string copies the entry', (await clipboard(page)) === stringFor(`${book.path}/0/0`));
+      await shot(page, 'blueprints-book-entry');
+      await page.locator('[data-contents] a', { hasText: 'Blueprint (slot 3)' }).click();
+      await page.waitForURL(/entry=0\/3$/);
+      expect('book: an entry with no render shows the ghost plate', (await page.locator('[data-plate="ghost"]').count()) === 1);
+    }
+
+    // --- deep links ------------------------------------------------------------------------------
+    {
+      const page = await open(`/blueprints/${ghost.path}`, 'desktop');
+      await ready(page);
+      expect('deep link: /blueprints/<path> opens that build', (await title(page)) === ghost.title);
+      expect('deep link: a build with no render shows "Not rendered yet"', ((await page.locator('[data-plate="ghost"]').textContent()) ?? '').includes('Not rendered yet'));
+      await goto(page, `/blueprints/${old.path}`);
+      await ready(page);
+      expect('deep link: a deprecated build opens by its address', (await title(page)) === old.title && ((await page.locator('[data-meta]').textContent()) ?? '').includes('Deprecated'));
+      await goto(page, `/blueprints/${hidden.path}`);
+      await ready(page);
+      expect('deep link: an unlisted build opens by its address and stays out of the index', (await title(page)) === hidden.title && !(await rowTitles(page)).includes(hidden.title));
+      await goto(page, '/blueprints/no/such/build');
+      await page.waitForSelector('[data-stage-message="unknown"]');
+      expect('deep link: an unknown address says so and links back', (await page.getByRole('link', { name: 'See all blueprints' }).count()) === 1);
+    }
+
+    // --- the catalog failing, then "Try again" -------------------------------------------------
+    {
+      const page = await open('/', 'desktop');
+      await page.route(`${VAULT}/index.json`, (r) => r.fulfill({ status: 503, body: 'down' }));
+      // A fresh document, so the shared fetch starts again under the failing route.
+      await goto(page, '/blueprints');
+      await page.waitForSelector('[data-stage-message="failed"]', { timeout: 10000 });
+      const msg = (await page.locator('[data-stage-message="failed"]').textContent()) ?? '';
+      expect('failure: the stage says the catalog didn\'t load', msg.includes("The blueprint catalog didn't load.") && msg.includes('Check your connection, then try again.'), msg);
+      expect('failure: the index is empty', (await rows(page).count()) === 0);
+      await shot(page, 'blueprints-failed');
+      await page.unroute(`${VAULT}/index.json`);
+      await page.getByRole('button', { name: 'Try again' }).click();
+      await ready(page);
+      expect('failure: "Try again" loads the catalog', (await rows(page).count()) === active.length);
+    }
+
+    // --- phone: the index page, then a build page ----------------------------------------------
+    {
+      const page = await open('/blueprints', 'phone');
+      await page.waitForSelector('[data-index-row]');
+      await shot(page, 'blueprints-phone');
+      expect('phone: /blueprints is the index alone', (await page.locator('[data-stage]').count()) === 0 && (await rows(page).count()) === active.length);
+      const heights = await page.$$eval('[data-index-row]', (els) => els.map((e) => e.getBoundingClientRect().height));
+      expect('phone: index rows are at least 44 px tall', Math.min(...heights) >= 44, heights.join(','));
+      await page.locator('[data-index-row]', { hasText: wide.title }).click();
+      await page.waitForURL(`**/blueprints/${wide.path}`);
+      await ready(page);
+      await shot(page, 'blueprints-phone-build');
+      expect('phone: a build page is the stage alone', (await page.locator('[data-index]').count()) === 0);
+      expect('phone: "All blueprints" leads back', (await page.getByRole('link', { name: 'All blueprints' }).getAttribute('href')) === '/blueprints');
+      const btn = await copyButton(page).boundingBox();
+      expect('phone: Copy string spans the width', btn && btn.width >= 390 - 32 - 1, JSON.stringify(btn));
+      const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect('phone: the build page does not scroll sideways', over <= 0, `${over}px`);
     }
   },
 };
