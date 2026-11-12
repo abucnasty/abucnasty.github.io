@@ -16,7 +16,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import { layout } from '../layout';
 import { loadSaveTree, loadedSaveTree, type SaveTree } from '../saves';
-import { SEARCH_GROUPS, saveEntries, search, staticEntries, type SearchEntry, type SearchKind } from '../search';
+import { useCatalog, type Catalog } from '../catalog';
+import { SEARCH_GROUPS, blueprintEntries, saveEntries, search, staticEntries, type SearchEntry, type SearchKind } from '../search';
 
 const GROUP_LIMIT = 6;
 
@@ -76,6 +77,12 @@ export function SearchProvider({ children }: { children: ReactNode }) {
 
 let staticCache: SearchEntry[] | null = null;
 const statics = () => (staticCache ??= staticEntries());
+let blueprintCache: { catalog: Catalog; entries: SearchEntry[] } | null = null;
+function blueprintsOf(catalog: Catalog | null): SearchEntry[] {
+  if (!catalog) return [];
+  if (blueprintCache?.catalog !== catalog) blueprintCache = { catalog, entries: blueprintEntries(catalog) };
+  return blueprintCache.entries;
+}
 
 interface Row {
   id: string;
@@ -102,6 +109,8 @@ function SearchBody({ onClose }: { onClose: () => void }) {
   const [active, setActive] = useState(0);
   const [tree, setTree] = useState<SaveTree | null>(loadedSaveTree);
   const [failed, setFailed] = useState(false);
+  // The blueprint catalog is fetched live (once per page load) as soon as the dialog opens.
+  const catalogState = useCatalog();
 
   const q = query.trim();
 
@@ -124,7 +133,7 @@ function SearchBody({ onClose }: { onClose: () => void }) {
     const flat: Row[] = [];
     const out: Group[] = [];
     if (!q) return { groups: out, rows: flat };
-    const found = search(statics(), q);
+    const found = search([...statics(), ...blueprintsOf(catalogState.catalog)], q);
     const saves = tree ? search(saveEntries(tree, q), q) : [];
     const allLabel: Partial<Record<SearchKind, { to: string; noun: string }>> = {
       benchmark: { to: `/benchmarks?q=${encodeURIComponent(q)}`, noun: 'benchmarks' },
@@ -133,7 +142,19 @@ function SearchBody({ onClose }: { onClose: () => void }) {
     for (const { kind, label } of SEARCH_GROUPS) {
       const list = kind === 'save' ? saves : found.filter((e) => e.kind === kind);
       const message =
-        kind === 'save' ? (loadingSaves ? 'Searching save files…' : failed ? 'Save files could not be loaded.' : undefined) : undefined;
+        kind === 'save'
+          ? loadingSaves
+            ? 'Searching save files…'
+            : failed
+              ? 'Save files could not be loaded.'
+              : undefined
+          : kind === 'blueprint' && list.length === 0
+            ? catalogState.status === 'loading'
+              ? 'Searching blueprints…'
+              : catalogState.status === 'failed'
+                ? 'Blueprints could not be loaded.'
+                : undefined
+            : undefined;
       if (list.length === 0 && !message) continue;
       const rowsOfGroup: Row[] = list.slice(0, GROUP_LIMIT).map((entry, i) => ({
         id: `${uid}-${kind}-${i}`,
@@ -153,7 +174,7 @@ function SearchBody({ onClose }: { onClose: () => void }) {
       out.push({ kind, label, rows: rowsOfGroup, message });
     }
     return { groups: out, rows: flat };
-  }, [q, tree, failed, loadingSaves, uid]);
+  }, [q, tree, failed, loadingSaves, uid, catalogState.catalog, catalogState.status]);
 
   const activeRow: Row | undefined = rows[active];
 
@@ -166,7 +187,7 @@ function SearchBody({ onClose }: { onClose: () => void }) {
     el.scrollIntoView({ block: 'nearest' });
   }, [activeRow]);
 
-  const nothing = Boolean(q) && rows.length === 0 && !loadingSaves && !failed;
+  const nothing = Boolean(q) && rows.length === 0 && !loadingSaves && !failed && catalogState.status === 'ready';
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.nativeEvent.isComposing) return;
