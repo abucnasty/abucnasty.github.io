@@ -8,14 +8,14 @@ A read-only frontend over the benchmarks repo — a curated subset of its write-
 
 - **Benchmarks** — a sortable table of every benchmark in the manifest, with detail pages that render each `README.md`, link to the original save files, and surface metadata (date, Factorio version, platform).
 - **Saves** — a browser for every Factorio save (`*.zip`) committed to the benchmarks repo, curated or not: folders, sizes, search, direct downloads. See [Saves page](#saves-page).
-- **Blueprints** — a dense list view of `docs/blueprints/README.md`, grouped by parent → category, with hover-popover previews scraped from factoriobin.
+- **Blueprints** — an index of builds beside one large render, read live from the blueprint vault. See [Blueprints page](#blueprints-page).
 - **Home** — an intro strip, the latest benchmarks and posts (newest first, featured benchmarks below), a short "Also here" list linking to the other pages, and the latest video.
 - **Tools** — benchmarking tools, utilities and mods, plus tutorials, from `src/data/tools.ts`.
 - **Blog** — posts from `src/blog/`.
 - **Search** — a dialog reachable from every page (header button, `/`, Ctrl/Cmd+K, the box on Home) that finds benchmarks, blueprints, tools, posts and save files; the save index is only fetched once something is typed.
 - **About** — who runs the site and how to get in touch.
 
-The site itself contains **no benchmark content in source control** beyond the curation manifest. A sync script at build time reads the local `factorio-benchmarks` clone (or a path set via `$FACTORIO_BENCHMARKS_PATH` in CI), copies / rewrites assets into `public/` and `src/generated/`, and produces typed JSON indexes the React app imports directly.
+The site itself contains **no benchmark content in source control** beyond the curation manifest, and no blueprint data at all (the Blueprints page fetches it in the browser). A sync script at build time reads the local `factorio-benchmarks` clone (or a path set via `$FACTORIO_BENCHMARKS_PATH` in CI), copies / rewrites assets into `public/` and `src/generated/`, and produces typed JSON indexes the React app imports directly.
 
 ## Repo layout
 
@@ -23,23 +23,22 @@ The site itself contains **no benchmark content in source control** beyond the c
 content/manifest.json         # ← curation list — edit this to add/remove benchmarks
 scripts/
   sync-content.mjs            # build-time sync: copies assets, rewrites markdown, writes indexes
-  parse-blueprints.mjs        # parses docs/blueprints/README.md into structured JSON
   sync-blog-images.mjs        # copies blog post images into public/blog
   lib/save-index.mjs          # indexes every .zip in the source repo from git objects
-  check/                      # `npm run check`: run.cjs plus one module per page in pages/
+  check/                      # `npm run check`: run.cjs, one module per page in pages/, fixtures/
 src/
   components/                 # shared: PageHeader, SectionHeader, ListRow (+ RowGroup), DenseTable;
-                              # also MarkdownRenderer, BlueprintRow, SaveRows, AppShell, …
-  pages/                      # Home, BenchmarksIndex, BenchmarkDetail, Saves, Blueprints, Tools,
-                              # BlogIndex, BlogPost, About, NotFound
+                              # also MarkdownRenderer, SaveRows, AppShell, …
+  pages/                      # Home, BenchmarksIndex, BenchmarkDetail, Saves, Tools, BlogIndex,
+                              # BlogPost, About, NotFound
+  pages/blueprints/           # the Blueprints page (its own lazy chunk, with Titillium Web)
+  catalog.ts                  # the live blueprint catalog: fetch, hook, URL helpers
   data/tools.ts               # the tools, mods and tutorials listed on /tools
   blog/                       # post sources and registry.ts
   layout.ts                   # shared sizes: header, page title, row heights, touch target, section gap
   generated/                  # ← gitignored; produced by sync-content.mjs
     index.json
     saves.json                # every save: [path, bytes, lfs oid] + per-folder metadata
-    blueprints.json
-    blueprints.md
     benchmarks/<slug>/README.md
   content.ts                  # types for everything in src/generated
   saves.ts                    # folder tree over saves.json + its on-demand loader
@@ -47,8 +46,6 @@ src/
 public/
   benchmarks/<slug>/...       # ← gitignored; non-zip assets copied by sync
   404.html                    # SPA fallback for GitHub Pages
-.cache/
-  factoriobin-previews.json   # ← gitignored; cached preview-image lookups
 ```
 
 ## Local development
@@ -82,7 +79,7 @@ npm run check -- --shots            # also write screenshots to check-output/ (g
 
 The runner starts `vite preview` on a free port and always stops it. It also fails any page that logs a console error or scrolls sideways on a phone. Chromium comes from Playwright; set `CHROMIUM_PATH` to use another binary.
 
-One module per page lives in `scripts/check/pages/<page>.cjs`. To check a new page or add to one, export `{ name, run(ctx) }`; `ctx.open(path, 'desktop' | 'phone')` returns a Playwright page, `ctx.expect(label, ok, detail)` records an assertion, and `ctx.data` holds the parsed `src/generated` JSON (derive counts from it rather than hard-coding them).
+One module per page lives in `scripts/check/pages/<page>.cjs`. To check a new page or add to one, export `{ name, run(ctx) }`; `ctx.open(path, 'desktop' | 'phone')` returns a Playwright page, `ctx.expect(label, ok, detail)` records an assertion, and `ctx.data` holds the parsed `src/generated` JSON plus `catalog`, the blueprint fixture (derive counts from them rather than hard-coding them). Every page is served [`scripts/check/fixtures/catalog.cjs`](scripts/check/fixtures/catalog.cjs) in place of `blueprints.abucnasty.dev` and the vault's READMEs on `raw.githubusercontent.com`, so no check depends on the live service.
 
 ## Adding a new benchmark
 
@@ -123,10 +120,9 @@ The manifest may list topics, in display order, and give each benchmark one:
   "topics": [{ "id": "inserters", "label": "Inserters & clocking" }],
   "benchmarks": [{ "slug": "…", "topic": "inserters" }]   // topic is optional
 }
-// optional per topic: "blueprintCategories": ["<category id from blueprints.json>"]
 ```
 
-A `topic` that is not the `id` of a listed topic, or two topics with the same `id`, fails the sync. A benchmark with no topic is allowed; sync warns with the count. A topic may optionally list `blueprintCategories` (not set for any topic today): ids of categories on the Blueprints page (the `id` values in `src/generated/blueprints.json`, e.g. `megabasing-space-science`). The benchmark page links to them under "Goes with this", and the Blueprints page links back to the topic's benchmarks. An id that is not a parsed category fails the sync, before any output is cleared. `index.json` gets `topics: [{ id, label, blueprintCategories, count }]` in manifest order (`blueprintCategories` is `[]` when the manifest has none, as it is for every topic today).
+A `topic` that is not the `id` of a listed topic, or two topics with the same `id`, fails the sync. A benchmark with no topic is allowed; sync warns with the count. `index.json` gets `topics: [{ id, label, count }]` in manifest order.
 
 Independently of the manifest, sync also writes `src/generated/saves.json` — see the next section.
 
@@ -150,20 +146,17 @@ Just delete its entry from `content/manifest.json` and rebuild. The benchmark's 
 
 ## Blueprints page
 
-Rendered from a single source file: `docs/blueprints/README.md` in the benchmarks repo (path configurable via `manifest.json#blueprintsSource`). Edit the markdown there — the parser ([scripts/parse-blueprints.mjs](scripts/parse-blueprints.mjs)) understands:
+Nothing about blueprints is built into the site. On every page load the browser fetches the catalog from [`blueprints.abucnasty.dev/index.json`](https://blueprints.abucnasty.dev/index.json), published from [abucnasty/factorio-blueprints](https://github.com/abucnasty/factorio-blueprints) (the vault); [`src/catalog.ts`](src/catalog.ts) holds the one shared fetch, a `useCatalog` hook and the URL helpers. Home's count and site search use the same fetch.
 
-- `## Parent` → top-level section divider
-- `### Category` → list block (optionally preceded/followed by an icon image)
-- A markdown table with columns like `Description | Version | Author | Links` (links cell can contain factoriobin and youtube URLs)
-- A `Deprecated:` heading or inline `(deprecated)` text marks entries as deprecated; they're hidden by default and revealed by the toggle on the page.
-
-On sync, each `factoriobin.com/post/<id>` link is fetched once to extract its preview image URL; results are cached in `.cache/factoriobin-previews.json` so reruns don't re-hit the site. Delete the cache file to force a re-fetch.
+- `/blueprints/<path>` opens a build; `?entry=<slot path>` picks one entry of a book. On a wide screen `/blueprints` shows the newest build.
+- The only link is the live string, `https://blueprints.abucnasty.dev/<path>.txt`. Renders come from `/<path>/renders/<file>`, one at a time; notes from the folder's `README.md` on `raw.githubusercontent.com`.
+- Deprecated builds are hidden behind a switch; an unlisted one (`status: "unlisted"`) opens only by its address.
 
 ## Deployment
 
 Pushed to `main`, [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) handles the rest:
 
-1. Reads `content/manifest.json` and writes a sparse-checkout pattern list (every benchmark `source` + the `docs/blueprints/` directory).
+1. Reads `content/manifest.json` and writes a sparse-checkout pattern list (every benchmark `source`).
 2. Shallow-clones `abucnasty/factorio-benchmarks` with `--filter=blob:limit=1k --sparse` and applies the pattern list — only the curated paths are materialized. The 1 kB blob limit means every git-lfs pointer in the repo (they are ~130 bytes) arrives with the clone, which is what lets the save index cover folders that are never checked out; larger blobs are still only fetched for the curated paths.
 3. Exports `FACTORIO_BENCHMARKS_PATH` to that clone, runs `npm ci --ignore-scripts && npm run build`.
 4. Uploads `dist/` and deploys via `actions/deploy-pages@v4`.

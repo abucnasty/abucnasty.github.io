@@ -45,8 +45,6 @@ export interface BenchmarkEntry {
 export interface TopicSummary {
   id: string;
   label: string;
-  /** Ids of the `BlueprintCategory` entries on the same subject; empty when none. Set in the manifest. */
-  blueprintCategories: string[];
   /** Number of benchmarks with this topic. */
   count: number;
 }
@@ -57,28 +55,6 @@ export interface ContentIndex {
   topics: TopicSummary[];
   benchmarks: BenchmarkEntry[];
   saveStats: { count: number; bytes: number };
-}
-
-export interface BlueprintEntry {
-  description: string;
-  version?: string;
-  author?: string;
-  factoriobinUrl?: string;
-  factoriobinPreviewUrl?: string;
-  youtubeUrl?: string;
-  deprecated: boolean;
-}
-
-export interface BlueprintCategory {
-  id: string;
-  parent: string;
-  name: string;
-  iconUrl?: string;
-  entries: BlueprintEntry[];
-}
-
-export interface BlueprintIndex {
-  categories: BlueprintCategory[];
 }
 
 /**

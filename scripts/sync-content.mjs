@@ -10,7 +10,6 @@
  *   (`manifest.lfsWorkerUrl`) built from the file's git-lfs object id at HEAD.
  * - Relative links in a README point at GitHub: a folder gets its `tree` page, a file
  *   tracked by git-lfs gets the same LFS worker URL as a save, anything else the raw file.
- * - Blueprints README is copied to src/generated/blueprints.md
  * - Every `.zip` committed to the source repo (curated or not) is indexed into
  *   src/generated/saves.json for the /saves page — see scripts/lib/save-index.mjs.
  *   That index is read from git objects at HEAD, so the source must be a git clone.
@@ -25,7 +24,6 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
-import { parseBlueprintsMarkdown } from './parse-blueprints.mjs';
 import { aggregateScenarioCsv } from './lib/aggregate.mjs';
 import { parseReadmeMeta } from './lib/readme-meta.mjs';
 import { stripOwnToc } from './lib/strip-toc.mjs';
@@ -51,8 +49,8 @@ const SOURCE_REPO_PATH =
 /** @typedef {{ name: string, scenarios: ChartScenario[], metrics?: string[] }} ChartGroup */
 /** @typedef {{ scenarios?: ChartScenario[], groups?: ChartGroup[], metrics?: string[], removeFirstTicks?: number, maxTicks?: number, window?: number }} ChartConfig */
 /** @typedef {{ slug: string, source: string, title: string, date?: string, summary?: string, tags?: string[], topic?: string, featured?: boolean, chart?: ChartConfig }} BenchmarkEntry */
-/** @typedef {{ id: string, label: string, blueprintCategories?: string[] }} Topic */
-/** @typedef {{ sourceRepo: { owner: string, repo: string, branch: string }, lfsWorkerUrl?: string, blueprintsSource: string, topics?: Topic[], benchmarks: BenchmarkEntry[] }} Manifest */
+/** @typedef {{ id: string, label: string }} Topic */
+/** @typedef {{ sourceRepo: { owner: string, repo: string, branch: string }, lfsWorkerUrl?: string, topics?: Topic[], benchmarks: BenchmarkEntry[] }} Manifest */
 
 /** Shortest text worth showing as a one-line finding. */
 const MIN_FINDING_LENGTH = 12;
@@ -64,9 +62,6 @@ async function main() {
 
   validateTopics(manifest);
   await assertSourceExists();
-  // Parsed before any output is cleared, so an unknown category id fails the sync with the old output intact.
-  const blueprints = await readBlueprints(manifest.blueprintsSource, rawBaseOf(manifest));
-  validateBlueprintCategories(manifest, blueprints.categories);
   await resetOutputDirs();
 
   const githubBase = `https://github.com/${manifest.sourceRepo.owner}/${manifest.sourceRepo.repo}`;
@@ -100,9 +95,6 @@ async function main() {
     log(`⚠ ${total - count('topic')} of ${total} benchmarks have no topic`);
   }
 
-  await syncBlueprints(blueprints);
-  log(`✓ blueprints.md`);
-
   await fs.mkdir(GENERATED_DIR, { recursive: true });
   await fs.writeFile(
     path.join(GENERATED_DIR, 'index.json'),
@@ -112,7 +104,6 @@ async function main() {
         topics: (manifest.topics ?? []).map((t) => ({
           id: t.id,
           label: t.label,
-          blueprintCategories: t.blueprintCategories ?? [],
           count: benchmarks.filter((b) => b.topic === t.id).length,
         })),
         benchmarks,
@@ -255,23 +246,6 @@ function validateTopics(manifest) {
   for (const entry of manifest.benchmarks) {
     if (entry.topic !== undefined && !ids.has(entry.topic)) {
       throw new Error(`manifest: benchmark "${entry.slug}" has topic "${entry.topic}", which is not in "topics"`);
-    }
-  }
-}
-
-/**
- * Fail the sync when a topic names a blueprint category that the parsed blueprints do not have.
- *
- * @param {Manifest} manifest
- * @param {Array<{ id: string }>} categories
- */
-function validateBlueprintCategories(manifest, categories) {
-  const known = new Set(categories.map((c) => c.id));
-  for (const topic of manifest.topics ?? []) {
-    for (const id of topic.blueprintCategories ?? []) {
-      if (!known.has(id)) {
-        throw new Error(`manifest: topic "${topic.id}" lists blueprint category "${id}", which is not in the blueprints`);
-      }
     }
   }
 }
@@ -516,101 +490,6 @@ function rawBaseOf(manifest) {
   return `https://raw.githubusercontent.com/${manifest.sourceRepo.owner}/${manifest.sourceRepo.repo}/${manifest.sourceRepo.branch}`;
 }
 
-/**
- * Read and parse the blueprints README. Writes nothing, so it can run before the output folders are cleared.
- *
- * @param {string} blueprintsSource
- * @param {string} rawBase
- */
-async function readBlueprints(blueprintsSource, rawBase) {
-  const srcFile = path.join(SOURCE_REPO_PATH, blueprintsSource);
-  await assertFile(srcFile, `blueprints source missing: ${blueprintsSource}`);
-
-  const raw = await fs.readFile(srcFile, 'utf8');
-  // Rewrite local icon refs (e.g. ../icons/foo.png) → raw GitHub URLs so we
-  // don't have to bundle the icon set into this repo.
-  const baseDir = path.posix.dirname(blueprintsSource);
-  const rewritten = raw.replace(
-    /(!\[[^\]]*\]\()([^)\s]+)([^)]*\))/g,
-    (_m, pre, p, post) => {
-      const trimmed = p.trim();
-      if (/^[a-z]+:/i.test(trimmed) || trimmed.startsWith('#')) return `${pre}${trimmed}${post}`;
-      const resolved = path.posix.normalize(`${baseDir}/${trimmed}`);
-      return `${pre}${rawBase}/${resolved}${post}`;
-    },
-  );
-  return { rewritten, categories: parseBlueprintsMarkdown(rewritten) };
-}
-
-/** @param {{ rewritten: string, categories: Array<any> }} blueprints */
-async function syncBlueprints({ rewritten, categories }) {
-  await fs.mkdir(GENERATED_DIR, { recursive: true });
-  await enrichFactoriobinPreviews(categories);
-  await fs.writeFile(
-    path.join(GENERATED_DIR, 'blueprints.json'),
-    JSON.stringify({ categories }, null, 2),
-  );
-  await fs.writeFile(path.join(GENERATED_DIR, 'blueprints.md'), rewritten);
-}
-
-const FACTORIOBIN_CACHE = path.join(ROOT, '.cache', 'factoriobin-previews.json');
-
-/**
- * Fetch each factoriobin post page once and extract its preview image URL.
- * Results are cached on disk so repeated syncs don't re-hit the site.
- *
- * @param {Array<{ entries: Array<{ factoriobinUrl?: string, factoriobinPreviewUrl?: string }> }>} categories
- */
-async function enrichFactoriobinPreviews(categories) {
-  let cache = {};
-  try {
-    cache = JSON.parse(await fs.readFile(FACTORIOBIN_CACHE, 'utf8'));
-  } catch {
-    /* no cache yet */
-  }
-
-  let fetched = 0;
-  let cached = 0;
-  for (const cat of categories) {
-    for (const entry of cat.entries) {
-      if (!entry.factoriobinUrl) continue;
-      const id = extractFactoriobinId(entry.factoriobinUrl);
-      if (!id) continue;
-      if (cache[id] !== undefined) {
-        if (cache[id]) entry.factoriobinPreviewUrl = cache[id];
-        cached++;
-        continue;
-      }
-      const preview = await fetchFactoriobinPreview(entry.factoriobinUrl);
-      cache[id] = preview ?? null;
-      if (preview) entry.factoriobinPreviewUrl = preview;
-      fetched++;
-    }
-  }
-
-  await fs.mkdir(path.dirname(FACTORIOBIN_CACHE), { recursive: true });
-  await fs.writeFile(FACTORIOBIN_CACHE, JSON.stringify(cache, null, 2));
-  log(`✓ factoriobin previews (${fetched} fetched, ${cached} cached)`);
-}
-
-function extractFactoriobinId(url) {
-  const m = /factoriobin\.com\/post\/([\w-]+)/i.exec(url);
-  return m ? m[1] : undefined;
-}
-
-async function fetchFactoriobinPreview(url) {
-  try {
-    const res = await fetch(url, { headers: { 'user-agent': 'abucnasty.github.io sync' } });
-    if (!res.ok) return undefined;
-    const html = await res.text();
-    // Preview image lives at https://cdn.factoriobin.com/perma/bp/<a>/<b>/<id>-<hash>/fbin-<id>-0.jpg
-    const m = /https:\/\/cdn\.factoriobin\.com\/perma\/bp\/[^"'\s)]+\.jpg/i.exec(html);
-    return m ? m[0] : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 /** @param {string} dir */
 async function walk(dir) {
   const out = [];
@@ -628,7 +507,6 @@ async function walk(dir) {
 
 async function resetOutputDirs() {
   await fs.rm(path.join(GENERATED_DIR, 'benchmarks'), { recursive: true, force: true });
-  await fs.rm(path.join(GENERATED_DIR, 'blueprints.md'), { force: true });
   await fs.rm(path.join(GENERATED_DIR, 'index.json'), { force: true });
   await fs.rm(path.join(GENERATED_DIR, 'saves.json'), { force: true });
   await fs.rm(PUBLIC_BENCHMARKS_DIR, { recursive: true, force: true });
