@@ -117,6 +117,8 @@ module.exports = {
       await ready(page);
       await page.waitForSelector('[data-arrangement="book"]', { timeout: 5000 }).catch(() => {});
       expect('book: a book whose render is measured on load is arranged beside its contents', (await page.locator('[data-arrangement="book"]').count()) === 1);
+      const box = await page.locator('[data-contents]').evaluate((el) => ({ overflow: getComputedStyle(el).overflowY, border: getComputedStyle(el).borderTopWidth, flag: el.dataset.overflowing ?? null }));
+      expect('book: a short contents list beside the plate neither scrolls nor shows rules', box.overflow === 'visible' && box.border === '0px' && box.flag === null, JSON.stringify(box));
       const contents = await page.$$eval('[data-contents] a', (els) => els.map((e) => e.textContent.trim()));
       expect(
         'book: contents start with "Whole book" and name unlabelled entries by kind and slot',

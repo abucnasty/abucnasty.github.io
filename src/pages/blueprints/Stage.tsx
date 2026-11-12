@@ -145,7 +145,9 @@ export function Stage({ entry, nodePath, phone, measured, onMeasured }: StagePro
     ) : (
       <GhostPlate />
     );
-  const contents = book ? <Contents entry={entry} selected={node ? node.path : null} phone={phone} /> : null;
+  const contents = book ? (
+    <Contents entry={entry} selected={node ? node.path : null} fit={arrangement === 'book' ? 'side' : arrangement === 'phone' ? 'phone' : 'stacked'} />
+  ) : null;
   const label = `${title}${node ? `, in ${entry.title}` : ''}`;
 
   if (arrangement === 'phone') {

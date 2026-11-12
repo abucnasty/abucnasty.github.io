@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Box, ButtonBase } from '@mui/material';
 import YouTubeIcon from '@mui/icons-material/YouTube';
 import { Link as RouterLink } from 'react-router-dom';
@@ -62,24 +62,72 @@ export function Facts({ entry }: { entry: CatalogEntry }) {
   );
 }
 
-/** The book's tree; each row selects that entry. "Whole book" first. */
-export function Contents({ entry, selected, phone }: { entry: CatalogEntry; selected: string | null; phone: boolean }) {
+/** Where the contents list sits: beside the plate, under it, or on a phone. */
+export type ContentsFit = 'side' | 'stacked' | 'phone';
+
+/** The list's height limit on a wide screen, and the least the side-by-side list may get. */
+const CONTENTS_CAP = 420;
+/** Space kept under the side-by-side list: the stage's bottom padding. */
+const CONTENTS_BOTTOM_GAP = 32;
+
+/**
+ * The book's tree; each row selects that entry. "Whole book" first. Beside the plate the list may
+ * run down to near the bottom of the window (never under 420 px); under the plate it stops at
+ * 420 px; on a phone it never scrolls on its own. It scrolls, with rules above and below, only
+ * when it overflows.
+ */
+export function Contents({ entry, selected, fit }: { entry: CatalogEntry; selected: string | null; fit: ContentsFit }) {
   const rows = flattenNodes(entry.nodes);
   const box = useRef<HTMLDivElement | null>(null);
-  const long = rows.length > 30;
+  const [maxHeight, setMaxHeight] = useState<number | null>(fit === 'phone' ? null : CONTENTS_CAP);
+  const [overflowing, setOverflowing] = useState(false);
 
-  // Bring a selected row of a long list into its scroll box (the box only, never the page).
+  // The limit: what is left of the window below the list's top, measured from the top of the page.
+  useLayoutEffect(() => {
+    if (fit !== 'side') {
+      setMaxHeight(fit === 'stacked' ? CONTENTS_CAP : null);
+      return;
+    }
+    const measure = () => {
+      const el = box.current;
+      if (!el) return;
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      setMaxHeight(Math.max(CONTENTS_CAP, Math.floor(window.innerHeight - top - CONTENTS_BOTTOM_GAP)));
+    };
+    measure();
+    // The header above can still change height: the web font arriving, a breadcrumb for an entry.
+    document.fonts?.ready.then(measure).catch(() => {});
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [fit, selected]);
+
+  // Whether the rows overflow that limit.
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el || maxHeight === null) {
+      setOverflowing(false);
+      return;
+    }
+    const check = () => setOverflowing(el.scrollHeight > maxHeight + 1);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [maxHeight, rows.length]);
+
+  // Bring the selected row into the list's own scroll box (never the page).
   useEffect(() => {
     const el = box.current;
-    if (!el || !long) return;
+    if (!el || !overflowing) return;
     const row = el.querySelector<HTMLElement>('[aria-current="true"]');
     if (!row) return;
-    const top = row.offsetTop - el.offsetTop;
+    const top = row.offsetTop; // the box is the rows' offset parent
     if (top < el.scrollTop || top + row.offsetHeight > el.scrollTop + el.clientHeight) {
       el.scrollTop = top - el.clientHeight / 2 + row.offsetHeight / 2;
     }
-  }, [selected, long]);
+  }, [selected, overflowing, maxHeight]);
 
+  const phone = fit === 'phone';
   const row = (key: string, label: string, to: string, depth: number, strong: boolean, on: boolean) => (
     <Box
       key={key}
@@ -119,11 +167,15 @@ export function Contents({ entry, selected, phone }: { entry: CatalogEntry; sele
       <Box
         ref={box}
         data-contents
+        data-overflowing={overflowing ? 'true' : undefined}
         sx={{
           display: 'flex',
           flexDirection: 'column',
           position: 'relative',
-          ...(long ? { maxHeight: 420, overflowY: 'auto', overscrollBehavior: 'contain', borderTop: `1px solid ${colors.rule}`, borderBottom: `1px solid ${colors.rule}` } : {}),
+          ...(maxHeight !== null ? { maxHeight } : {}),
+          ...(overflowing
+            ? { overflowY: 'auto', overscrollBehavior: 'contain', borderTop: `1px solid ${colors.rule}`, borderBottom: `1px solid ${colors.rule}` }
+            : { overflowY: 'visible' }),
         }}
       >
         {row('whole', 'Whole book', base, 0, true, selected === null)}
