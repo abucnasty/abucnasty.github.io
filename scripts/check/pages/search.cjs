@@ -18,7 +18,7 @@ function benchmarkHaystack(b, topicLabels) {
 module.exports = {
   name: 'search',
   async run({ open, goto, expect, requests, data, shot }) {
-    const { index, blueprints, saves } = data;
+    const { index, catalog, saves } = data;
     const topicLabels = new Map(index.topics.map((t) => [t.id, t.label]));
     const newest = index.benchmarks.reduce((a, b) => ((b.date ?? '') > (a.date ?? '') ? b : a));
     const savesChunk = (page) => requests(page).filter((u) => u.includes('/assets/saves-'));
@@ -184,35 +184,24 @@ module.exports = {
     await closed(page);
     await page.setViewportSize({ width: 1280, height: 800 });
 
-    // Blueprints: a word rare enough to land in the first rows.
-    const bpEntries = [];
-    for (const c of blueprints.categories) {
-      for (const e of c.entries) {
-        if (!e.deprecated) bpEntries.push({ e, hay: [e.description, c.name, c.parent, e.author].filter(Boolean).join('\n').toLowerCase() });
-      }
-    }
-    const candidates = bpEntries.filter((x) => x.e.factoriobinUrl);
-    let pick = null;
-    for (const x of candidates) {
-      for (const w of words(x.e.description).filter((w) => /^[a-z]{5,}$/.test(w))) {
-        const n = bpEntries.filter((y) => y.hay.includes(w)).length;
-        if (n >= 1 && n <= GROUP_LIMIT) {
-          pick = { word: w, entry: x.e };
-          break;
-        }
-      }
-      if (pick) break;
-    }
-    expect('desktop: the blueprint data has a word to search for', !!pick);
-    if (pick) {
+    // Blueprints come from the live catalog (the fixture here) and open on this site.
+    const bpEntries = catalog.blueprints.filter((e) => e.status !== 'unlisted' && !e.deprecated);
+    {
+      const pick = bpEntries[0];
       await goto(page, '/');
       await page.keyboard.press('/');
-      await type(page, pick.word);
-      const bp = group(page, 'Blueprints').locator(`[role=option][href="${pick.entry.factoriobinUrl}"]`);
-      await bp.first().waitFor();
-      expect('desktop: a blueprint is found by a word from its description', (await bp.count()) >= 1);
-      expect('desktop: a blueprint with a factoriobin URL opens in a new tab', (await bp.first().getAttribute('target')) === '_blank' && (await bp.first().getAttribute('rel')).includes('noopener'));
-      expect('desktop: an external row shows the open-in-new icon', (await bp.first().locator('svg').count()) === 1);
+      await type(page, pick.title);
+      const bp = group(page, 'Blueprints').locator(`[role=option][href="/blueprints/${pick.path}"]`);
+      await bp.first().waitFor({ timeout: 5000 }).catch(() => {});
+      expect('desktop: a blueprint is found by its title', (await bp.count()) === 1);
+      expect('desktop: a blueprint result opens its page on this site', (await bp.first().getAttribute('target')) === null && (await bp.first().locator('svg').count()) === 0);
+      await input(page).fill('');
+      for (const e of catalog.blueprints.filter((x) => x.status === 'unlisted' || x.deprecated)) {
+        await input(page).fill(e.title);
+        await page.waitForTimeout(150);
+        const n = await page.locator(`[role=dialog] [role=option][href="/blueprints/${e.path}"]`).count();
+        expect(`desktop: search leaves out ${e.status === 'unlisted' ? 'an unlisted' : 'a deprecated'} blueprint`, n === 0);
+      }
       await page.keyboard.press('Escape');
       await closed(page);
     }
@@ -320,6 +309,8 @@ module.exports = {
     // Home.
     await goto(page, '/');
     const homeSearch = page.locator('[data-home-search]');
+    // The blueprint count arrives with the catalog.
+    await page.waitForFunction(() => /\d+ blueprints/.test(document.querySelector('[data-home-search]')?.getAttribute('aria-label') ?? ''), null, { timeout: 5000 }).catch(() => {});
     const homeText = (await homeSearch.getAttribute('aria-label')) ?? '';
     const homeVisible = (await homeSearch.innerText()).replace(/\s+/g, ' ').trim();
     const activeBlueprints = bpEntries.length;
