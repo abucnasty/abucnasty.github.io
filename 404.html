@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>abucnasty has moved to abucnasty.dev</title>
+    <link rel="canonical" href="https://abucnasty.dev/" />
+    <script>
+      // The site moved to https://abucnasty.dev. Send the visitor to the same page there.
+      // Only ever the fixed origin below: anything else goes to its home page.
+      // REDIRECT-START
+      function redirectTarget(pathname, search, hash) {
+        var origin = 'https://abucnasty.dev';
+        var home = origin + '/';
+        var params = new URLSearchParams(search);
+        var path = params.get('path');
+        var url;
+        if (path === null) {
+          // Same path, query and hash.
+          url = new URL(origin + pathname + search + hash);
+        } else {
+          // The old SPA fallback's /?path=<encoded path>: a site path, nothing else.
+          if (path.charAt(0) !== '/' || path.charAt(1) === '/' || /[\\:\u0000-\u001f\u007f]/.test(path)) return home;
+          url = new URL(origin + path);
+          params.delete('path');
+          params.forEach(function (value, key) {
+            url.searchParams.append(key, value);
+          });
+          if (!url.hash) url.hash = hash;
+        }
+        return url.origin === origin ? url.href : home;
+      }
+      // REDIRECT-END
+      try {
+        location.replace(redirectTarget(location.pathname, location.search, location.hash));
+      } catch (e) {
+        location.replace('https://abucnasty.dev/');
+      }
+    </script>
+    <noscript><meta http-equiv="refresh" content="0; url=https://abucnasty.dev/" /></noscript>
+    <style>
+      body { margin: 0; padding: 2rem 1rem; background: #111; color: #eee; font: 1rem/1.5 system-ui, sans-serif; }
+      a { color: #ffa94d; }
+    </style>
+  </head>
+  <body>
+    <p>This site has moved to <a href="https://abucnasty.dev/">abucnasty.dev</a>.</p>
+  </body>
+</html>

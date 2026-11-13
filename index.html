@@ -1,75 +1,49 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>abucnasty — Factorio benchmarks, blueprints, and tools</title>
-    <meta
-      name="description"
-      content="Factorio UPS benchmarks, megabase performance research, blueprint registry, and open-source tools by abucnasty. Compare entity update, transport line, and electric network costs across Factorio versions."
-    />
-    <meta
-      name="keywords"
-      content="Factorio, Factorio benchmarks, UPS, update per second, megabase, performance, blueprints, belt benchmarks, inserter clocks, mining drills, Space Age, Factorio 2.0, abucnasty"
-    />
-    <meta name="author" content="abucnasty" />
-    <link rel="canonical" href="https://abucnasty.github.io/" />
-    <meta name="theme-color" content="#000000" />
-    <meta name="color-scheme" content="dark" />
-
-    <!-- Open Graph -->
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="abucnasty" />
-    <meta property="og:title" content="abucnasty — Factorio benchmarks, blueprints, and tools" />
-    <meta
-      property="og:description"
-      content="UPS benchmarks, blueprint registry, and open-source tools for Factorio megabases. Reproducible saves, CSV results, and time-series charts."
-    />
-    <meta property="og:url" content="https://abucnasty.github.io/" />
-    <meta property="og:image" content="https://avatars.githubusercontent.com/u/213731755?v=4" />
-
-    <!-- Twitter / X -->
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="abucnasty — Factorio benchmarks, blueprints, and tools" />
-    <meta
-      name="twitter:description"
-      content="UPS benchmarks, blueprint registry, and open-source tools for Factorio megabases."
-    />
-    <meta name="twitter:image" content="https://avatars.githubusercontent.com/u/213731755?v=4" />
-
-    <link rel="icon" href="https://avatars.githubusercontent.com/u/213731755?v=4" />
-
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "abucnasty",
-        "url": "https://abucnasty.github.io/",
-        "description": "Factorio UPS benchmarks, blueprints, and open-source tools by abucnasty.",
-        "author": {
-          "@type": "Person",
-          "name": "abucnasty",
-          "url": "https://github.com/abucnasty",
-          "sameAs": [
-            "https://github.com/abucnasty",
-            "https://www.youtube.com/@abucnasty"
-          ]
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>abucnasty has moved to abucnasty.dev</title>
+    <link rel="canonical" href="https://abucnasty.dev/" />
+    <script>
+      // The site moved to https://abucnasty.dev. Send the visitor to the same page there.
+      // Only ever the fixed origin below: anything else goes to its home page.
+      // REDIRECT-START
+      function redirectTarget(pathname, search, hash) {
+        var origin = 'https://abucnasty.dev';
+        var home = origin + '/';
+        var params = new URLSearchParams(search);
+        var path = params.get('path');
+        var url;
+        if (path === null) {
+          // Same path, query and hash.
+          url = new URL(origin + pathname + search + hash);
+        } else {
+          // The old SPA fallback's /?path=<encoded path>: a site path, nothing else.
+          if (path.charAt(0) !== '/' || path.charAt(1) === '/' || /[\\:\u0000-\u001f\u007f]/.test(path)) return home;
+          url = new URL(origin + path);
+          params.delete('path');
+          params.forEach(function (value, key) {
+            url.searchParams.append(key, value);
+          });
+          if (!url.hash) url.hash = hash;
         }
+        return url.origin === origin ? url.href : home;
+      }
+      // REDIRECT-END
+      try {
+        location.replace(redirectTarget(location.pathname, location.search, location.hash));
+      } catch (e) {
+        location.replace('https://abucnasty.dev/');
       }
     </script>
+    <noscript><meta http-equiv="refresh" content="0; url=https://abucnasty.dev/" /></noscript>
+    <style>
+      body { margin: 0; padding: 2rem 1rem; background: #111; color: #eee; font: 1rem/1.5 system-ui, sans-serif; }
+      a { color: #ffa94d; }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
-    <script>
-      // Restore the deep-link path that 404.html encoded as ?path=...
-      (function () {
-        var params = new URLSearchParams(window.location.search);
-        var path = params.get('path');
-        if (path) {
-          history.replaceState(null, '', path);
-        }
-      })();
-    </script>
-    <script type="module" src="/src/main.tsx"></script>
+    <p>This site has moved to <a href="https://abucnasty.dev/">abucnasty.dev</a>.</p>
   </body>
 </html>
